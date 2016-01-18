@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Deploys Survey Runner to Elastic Beanstalk</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.4.1">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>https://github.com/ONSdigital/eq-survey-runner.git</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>npm install; npm run build;</command>
+    </hudson.tasks.Shell>
+    <br.com.ingenieux.jenkins.plugins.awsebdeployment.AWSEBDeploymentBuilder plugin="awseb-deployment-plugin@0.3.5">
+      <credentialId>e50cc745-fe9a-4b08-94aa-eb65a4063cb9</credentialId>
+      <awsRegion>eu-west-1</awsRegion>
+      <applicationName>eq-survey-runner</applicationName>
+      <environmentName>survey-runner-pre-prod</environmentName>
+      <bucketName></bucketName>
+      <keyPrefix></keyPrefix>
+      <versionLabelFormat>${GIT_COMMIT}-${BUILD_TAG}</versionLabelFormat>
+      <rootObject>.</rootObject>
+      <includes></includes>
+      <excludes></excludes>
+      <zeroDowntime>false</zeroDowntime>
+    </br.com.ingenieux.jenkins.plugins.awsebdeployment.AWSEBDeploymentBuilder>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
