@@ -24,7 +24,7 @@ job('Deploy Survey Runner Test') {
             rootObject('.')
             includes('')
             excludes('')
-            zeroDowntime('false')
+            zeroDowntime('true')
        }
   }
 }
