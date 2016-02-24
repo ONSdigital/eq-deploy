@@ -7,6 +7,7 @@ job('Deploy Survey Runner') {
        githubPush()
   }
   steps {
+    shell('rm ./.ebextensions/git-revision.config')
     shell('cat << EOF >> ./.ebextensions/git-revision.config\n\noption_settings:\n  - option_name: EQ_GIT_REF\n    value: ${GIT_COMMIT}\nEOF')
     shell('npm install')
     shell('npm run compile')
