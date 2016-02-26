@@ -9,6 +9,8 @@ job('Deploy Survey Runner') {
   steps {
     shell('rm ./.ebextensions/git-revision.config')
     shell('cat << EOF >> ./.ebextensions/git-revision.config\n\noption_settings:\n  - option_name: EQ_GIT_REF\n    value: ${GIT_COMMIT}\nEOF')
+    shell('rm -rf node_modules')
+    shell('npm cache clean')
     shell('npm install')
     shell('npm run compile')
     shell('mkdir -p keys')
