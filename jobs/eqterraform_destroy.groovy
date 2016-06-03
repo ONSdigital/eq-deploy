@@ -7,10 +7,9 @@ job('Terraform Destroy Environment') {
        githubPush()
   }
   steps {
-    shell('cd survey-runner')
-    shell('terraform remote config -backend=S3 -backend-config="bucket=jenkins-ci-production-terraform-state" -backend-config="key=jenkins" -backend-config="region=eu-west-1"')
-    shell('terraform remote pull')
-    shell('terraform destroy --force -var "env=prod"')
-    shell('terraform remote push')
+    shell('cd survey-runner; terraform remote config -backend=S3 -backend-config="bucket=jenkins-ci-production-terraform-state" -backend-config="key=jenkins" -backend-config="region=eu-west-1"')
+    shell('cd survey-runner; terraform remote pull')
+    shell('cd survey-runner; terraform destroy --force -var "env=prod"')
+    shell('cd survey-runner; terraform remote push')
   }
 }
