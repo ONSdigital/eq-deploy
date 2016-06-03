@@ -1,4 +1,4 @@
-job('Terraform Environment') {
+job('Terraform Destroy Environment') {
   description 'Terraform Destroy Environment.'
   scm {
     github ('ONSDigital/eq-terraform', 'master')
