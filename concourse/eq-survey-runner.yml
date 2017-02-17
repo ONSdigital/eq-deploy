@@ -1,0 +1,47 @@
+resources:
+- name: source-code
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-survey-runner.git
+    branch: concourse
+
+- name: docker-resource-image
+  type: docker-image
+  source:
+    repository: onsdigital/eq-survey-runner
+    username: {{docker-username}}
+    password: {{docker-password}}
+
+jobs:
+- name: eq-survey-runner
+  plan:
+  - get: source-code
+    trigger: true
+
+  - task: Build
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/docker-aws-apache-wsgi
+          tag: 'python-3.4.2-onbuild'
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd source-code
+          python --version
+          pip install --require-hashes -r requirements.txt
+          pip install -r requirements_for_test.txt
+          sh ./scripts/run_tests.sh
+
+  - put: docker-resource-image
+    params: {build: source-code}
+
