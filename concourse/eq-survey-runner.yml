@@ -3,30 +3,30 @@ resources:
   type: git
   source:
     uri: https://github.com/ONSdigital/eq-survey-runner.git
-    branch: concourse
+    branch: master
 
-- name: docker-resource-image
-  type: docker-image
+- name: terraform-scripts
+  type: git
   source:
-    repository: onsdigital/eq-survey-runner
-    username: {{docker-username}}
-    password: {{docker-password}}
+    uri: https://github.com/ONSdigital/eq-terraform.git
+    branch: improvements-for-concourse
 
 jobs:
 - name: eq-survey-runner
   plan:
   - get: source-code
     trigger: true
+  - get: terraform-scripts
+    trigger: true
 
-  - task: Build
+  - task: Run Tests
     config:
       platform: linux
 
       image_resource:
         type: docker-image
         source:
-          repository: onsdigital/docker-aws-apache-wsgi
-          tag: 'python-3.4.2-onbuild'
+          repository: onsdigital/eq-survey-runner
 
       inputs:
       - name: source-code
@@ -37,11 +37,255 @@ jobs:
         - -exc
         - |
           cd source-code
-          python --version
-          pip install --require-hashes -r requirements.txt
-          pip install -r requirements_for_test.txt
-          sh ./scripts/run_tests.sh
+          pip install --no-cache-dir -r requirements_for_test.txt
+          sh scripts/run_tests_unit.sh
 
-  - put: docker-resource-image
-    params: {build: source-code}
+  - task: Terraform Apply
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      inputs:
+      - name: terraform-scripts
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd terraform-scripts
+          export AWS_ACCESS_KEY_ID={{aws_access_key}}
+          export AWS_SECRET_ACCESS_KEY={{aws_secret_key}}
+          export AWS_DEFAULT_REGION=eu-west-1
+          export AWS_ENVIRONMENT_NAME=concourse
+
+          export TF_VAR_aws_access_key={{aws_access_key}}
+          export TF_VAR_aws_secret_key={{aws_secret_key}}
+
+          export TF_VAR_vpc_cidr_block=10.30.20.0/24
+
+
+          export TF_VAR_public_cidrs="[\"10.30.20.144/28\"]"
+
+
+          export TF_VAR_application_cidrs="[\"10.30.20.48/28\"]"
+          export TF_VAR_database_cidrs="[\"10.30.20.96/28\",\"10.30.20.112/28\"]"
+
+          export TF_VAR_multi_az=false
+          export TF_VAR_backup_retention_period=0
+
+          export TF_VAR_cloudwatch_alarm_arn={{slack_alarm}}
+
+
+          export TF_VAR_queue_cidrs="[\"10.30.20.0/27\"]"
+
+          export TF_VAR_aws_key_pair={{aws_key_pair}}
+          export TF_VAR_rabbitmq_ips="[\"10.30.20.15\",\"10.30.20.16\"]"
+          export TF_VAR_rabbitmq_admin_user="admin" # Admin username
+          export TF_VAR_rabbitmq_admin_password="test1" # Admin password
+          export TF_VAR_rabbitmq_write_user="writeonly" # "writeonly" username
+          export TF_VAR_rabbitmq_write_password="test2" # "writeonly" password
+          export TF_VAR_rabbitmq_read_user="readonly" # "readonly" username
+          export TF_VAR_rabbitmq_read_password="test3" # "readonly" password
+
+          export TF_VAR_dns_zone_id={{dns_zone_id}}
+          export TF_VAR_dns_zone_name="dev.eq.ons.digital"
+
+          export TF_VAR_sdx_cidrs="[\"10.99.0.1/32\"]"
+          export TF_VAR_rsyslogd_server_ip="10.99.0.2"
+          export TF_VAR_logserver_cidr="10.99.0.3/32"
+          export TF_VAR_audit_cidr="10.99.0.4/32"
+
+          export TF_VAR_cloudwatch_alarm_arn={{slack_alarm}}
+
+
+          export TF_VAR_ons_access_ips={{ons_access_ips}}
+          export TF_VAR_eb_min_size=1
+          export TF_VAR_eb_max_size=1
+          export TF_VAR_eb_instance_type="t2.medium"
+          export TF_VAR_elastic_beanstalk_iam_role="aws-elasticbeanstalk-ec2-role"
+          export TF_VAR_certificate_arn={{certificate_arn}}
+          export TF_VAR_elastic_beanstalk_aws_key_pair={{aws_key_pair}}
+
+
+          export TF_VAR_application_secret_key="you'll never guess it"
+          export TF_VAR_eq_sr_log_level="DEBUG"
+          export TF_VAR_cloudwatch_logging="False"
+          export TF_VAR_google_analytics_code=""
+          export TF_VAR_dev_mode="True"
+
+          export TF_VAR_rabbitmq_ip_prime="10.30.20.15"
+          export TF_VAR_rabbitmq_ip_failover="10.30.20.16"
+          export TF_VAR_rabbitmq_admin_user="admin" # Admin username
+          export TF_VAR_rabbitmq_admin_password="test1" # Admin password
+          export TF_VAR_rabbitmq_write_user="writeonly" # "writeonly" username
+          export TF_VAR_rabbitmq_write_password="test2" # "writeonly" password
+          export TF_VAR_rabbitmq_read_user="readonly" # "readonly" username
+          export TF_VAR_rabbitmq_read_password="test3" # "readonly" password
+
+          export TF_VAR_dns_zone_id={{dns_zone_id}}
+          export TF_VAR_dns_zone_name="dev.eq.ons.digital"
+
+          cd survey-runner-vpc
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=vpc-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+          cd ../survey-runner-routing
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=routing-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+          cd ../survey-runner-database
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=database-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+          cd ../survey-runner-queue
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=queue-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+          cd ../survey-runner-application
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=application-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+
+          cd ../
+
+          ./survey-runner.sh apply
+
+  - task: Terraform Destroy
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      inputs:
+      - name: terraform-scripts
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd terraform-scripts
+          export AWS_ACCESS_KEY_ID={{aws_access_key}}
+          export AWS_SECRET_ACCESS_KEY={{aws_secret_key}}
+          export AWS_DEFAULT_REGION=eu-west-1
+          export AWS_ENVIRONMENT_NAME=concourse
+          export TF_VAR_aws_access_key={{aws_access_key}}
+          export TF_VAR_aws_secret_key={{aws_secret_key}}
+
+          export TF_VAR_vpc_cidr_block=10.30.20.0/24
+
+
+          export TF_VAR_public_cidrs="[\"10.30.20.144/28\"]"
+
+
+          export TF_VAR_application_cidrs="[\"10.30.20.48/28\"]"
+          export TF_VAR_database_cidrs="[\"10.30.20.96/28\",\"10.30.20.112/28\"]"
+
+          export TF_VAR_multi_az=false
+          export TF_VAR_backup_retention_period=0
+
+          export TF_VAR_cloudwatch_alarm_arn={{slack_alarm}}
+
+
+          export TF_VAR_queue_cidrs="[\"10.30.20.0/27\"]"
+
+          export TF_VAR_aws_key_pair={{aws_key_pair}}
+          export TF_VAR_rabbitmq_ips="[\"10.30.20.15\",\"10.30.20.16\"]"
+          export TF_VAR_rabbitmq_admin_user="admin" # Admin username
+          export TF_VAR_rabbitmq_admin_password="test1" # Admin password
+          export TF_VAR_rabbitmq_write_user="writeonly" # "writeonly" username
+          export TF_VAR_rabbitmq_write_password="test2" # "writeonly" password
+          export TF_VAR_rabbitmq_read_user="readonly" # "readonly" username
+          export TF_VAR_rabbitmq_read_password="test3" # "readonly" password
+
+          export TF_VAR_dns_zone_id={{dns_zone_id}}
+          export TF_VAR_dns_zone_name="dev.eq.ons.digital"
+
+          export TF_VAR_sdx_cidrs="[\"10.99.0.1/32\"]"
+          export TF_VAR_rsyslogd_server_ip="10.99.0.2"
+          export TF_VAR_logserver_cidr="10.99.0.3/32"
+          export TF_VAR_audit_cidr="10.99.0.4/32"
+
+          export TF_VAR_cloudwatch_alarm_arn={{slack_alarm}}
+
+
+          export TF_VAR_ons_access_ips={{ons_access_ips}}
+          export TF_VAR_eb_min_size=1
+          export TF_VAR_eb_max_size=1
+          export TF_VAR_eb_instance_type="t2.medium"
+          export TF_VAR_elastic_beanstalk_iam_role="aws-elasticbeanstalk-ec2-role"
+          export TF_VAR_certificate_arn={{certificate_arn}}
+          export TF_VAR_elastic_beanstalk_aws_key_pair={{aws_key_pair}}
+
+
+          export TF_VAR_application_secret_key="you'll never guess it"
+          export TF_VAR_eq_sr_log_level="DEBUG"
+          export TF_VAR_cloudwatch_logging="False"
+          export TF_VAR_google_analytics_code=""
+          export TF_VAR_dev_mode="True"
+
+          export TF_VAR_rabbitmq_ip_prime="10.30.20.15"
+          export TF_VAR_rabbitmq_ip_failover="10.30.20.16"
+          export TF_VAR_rabbitmq_admin_user="admin" # Admin username
+          export TF_VAR_rabbitmq_admin_password="test1" # Admin password
+          export TF_VAR_rabbitmq_write_user="writeonly" # "writeonly" username
+          export TF_VAR_rabbitmq_write_password="test2" # "writeonly" password
+          export TF_VAR_rabbitmq_read_user="readonly" # "readonly" username
+          export TF_VAR_rabbitmq_read_password="test3" # "readonly" password
+
+          export TF_VAR_dns_zone_id={{dns_zone_id}}
+          export TF_VAR_dns_zone_name="dev.eq.ons.digital"
+
+          cd survey-runner-vpc
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=vpc-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+          cd ../survey-runner-routing
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=routing-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+          cd ../survey-runner-database
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=database-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+          cd ../survey-runner-queue
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=queue-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+          cd ../survey-runner-application
+          terraform remote config \
+                        -backend=s3 \
+                        -backend-config="bucket=terraform-state-concourse" \
+                        -backend-config="key=application-terraform.tfstate" \
+                        -backend-config="region=eu-west-1"
+
+          cd ../
+
+          ./survey-runner.sh destroy
 

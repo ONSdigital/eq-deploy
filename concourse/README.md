@@ -1,6 +1,6 @@
 
 `fly -t eq login -c CONCOURSE_URL`
 
-`fly -t eq set-pipeline -p eq-survey-runner -c eq-survey-runner.yml`
+`fly -t eq set-pipeline -p eq-survey-runner -c concourse/eq-survey-runner.yml  --load-vars-from concourse/secrets.yml`
 
 `fly -t eq unpause-pipeline --pipeline eq-survey-runner`
