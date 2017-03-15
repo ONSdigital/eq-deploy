@@ -179,7 +179,7 @@ jobs:
           ./survey-runner.sh apply
 
           cd survey-runner-application
-          echo "export REMOTE_ADDRESS=$(terraform output survey_runner_elb_address)" > ../../exports/exports
+          echo "export EQ_FUNCTIONAL_TEST_ENV=$(terraform output survey_runner_elb_address)" > ../../exports/exports
 
   - task: Deploy Application
     config:
@@ -228,7 +228,6 @@ jobs:
           cd source-code
           echo $REMOTE_ADDRESS
           export TRAVIS=true
-          export EQ_FUNCTIONAL_TEST_ENV=remote
           yarn compile
           sh scripts/run_tests_functional.sh
 
