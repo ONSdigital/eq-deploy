@@ -3,7 +3,7 @@ resources:
   type: git
   source:
     uri: https://github.com/ONSdigital/eq-survey-runner.git
-    branch: master
+    branch: remote-functional-tests
 
 - name: terraform-scripts
   type: git
@@ -11,12 +11,21 @@ resources:
     uri: https://github.com/ONSdigital/eq-terraform.git
     branch: improvements-for-concourse
 
+- name: taurus-scripts
+  type: git
+  source:
+    uri: https://github.com/jonnyshaw89/taurus-scripts.git
+    branch: master
+
 jobs:
 - name: eq-survey-runner
+  serial_groups: [eq-survey-runner]
   plan:
   - get: source-code
     trigger: true
   - get: terraform-scripts
+    trigger: true
+  - get: taurus-scripts
     trigger: true
 
   - task: Run Tests
@@ -52,6 +61,9 @@ jobs:
       inputs:
       - name: terraform-scripts
 
+      outputs:
+      - name: exports
+
       run:
         path: bash
         args:
@@ -84,6 +96,7 @@ jobs:
           export TF_VAR_queue_cidrs="[\"10.30.20.0/27\"]"
 
           export TF_VAR_aws_key_pair={{aws_key_pair}}
+          export TF_VAR_rabbitmq_enabled="False"
           export TF_VAR_rabbitmq_ips="[\"10.30.20.15\",\"10.30.20.16\"]"
           export TF_VAR_rabbitmq_admin_user="admin" # Admin username
           export TF_VAR_rabbitmq_admin_password="test1" # Admin password
@@ -165,6 +178,83 @@ jobs:
 
           ./survey-runner.sh apply
 
+          cd survey-runner-application
+          echo "export REMOTE_ADDRESS=$(terraform output survey_runner_elb_address)" > ../../exports/exports
+
+  - task: Deploy Application
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd source-code
+          export AWS_ACCESS_KEY_ID={{aws_access_key}}
+          export AWS_SECRET_ACCESS_KEY={{aws_secret_key}}
+          export AWS_DEFAULT_REGION=eu-west-1
+          echo n | eb init --region eu-west-1 concourse-survey-runner
+          yarn compile
+          eb deploy --timeout 15
+
+  - task: Run Functional Tests
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: source-code
+      - name: exports
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          $(cat exports/exports)
+          cd source-code
+          echo $REMOTE_ADDRESS
+          export TRAVIS=true
+          export EQ_FUNCTIONAL_TEST_ENV=remote
+          yarn compile
+          sh scripts/run_tests_functional.sh
+
+  - task: Run Non-Functional Tests
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: undera/taurus
+
+      inputs:
+      - name: taurus-scripts
+      - name: exports
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          $(cat exports/exports)
+          cd taurus-scripts
+          echo $REMOTE_ADDRESS
+          bzt -o scenarios.eq-test.default-address=https://$(echo $REMOTE_ADDRESS) *.yml
+
   - task: Terraform Destroy
     config:
       platform: linux
@@ -208,6 +298,7 @@ jobs:
           export TF_VAR_queue_cidrs="[\"10.30.20.0/27\"]"
 
           export TF_VAR_aws_key_pair={{aws_key_pair}}
+          export TF_VAR_rabbitmq_enabled="False"
           export TF_VAR_rabbitmq_ips="[\"10.30.20.15\",\"10.30.20.16\"]"
           export TF_VAR_rabbitmq_admin_user="admin" # Admin username
           export TF_VAR_rabbitmq_admin_password="test1" # Admin password
