@@ -179,7 +179,7 @@ jobs:
           ./survey-runner.sh apply
 
           cd survey-runner-application
-          echo "export EQ_FUNCTIONAL_TEST_ENV=$(terraform output survey_runner_elb_address)" > ../../exports/exports
+          echo "export EQ_FUNCTIONAL_TEST_ENV=https://$(terraform output survey_runner_elb_address)" > ../../exports/exports
 
   - task: Deploy Application
     config:
@@ -252,7 +252,7 @@ jobs:
           $(cat exports/exports)
           cd taurus-scripts
           echo $REMOTE_ADDRESS
-          bzt -o scenarios.eq-test.default-address=https://$(echo $REMOTE_ADDRESS) *.yml
+          bzt -o scenarios.eq-test.default-address=$(echo $REMOTE_ADDRESS) *.yml
 
   - task: Terraform Destroy
     config:
