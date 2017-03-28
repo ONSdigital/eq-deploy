@@ -3,7 +3,7 @@ resources:
   type: git
   source:
     uri: https://github.com/ONSdigital/eq-survey-runner.git
-    branch: remote-functional-tests
+    branch: master
 
 - name: terraform-scripts
   type: git
@@ -251,8 +251,8 @@ jobs:
         - |
           $(cat exports/exports)
           cd taurus-scripts
-          echo $REMOTE_ADDRESS
-          bzt -o scenarios.eq-test.default-address=$(echo $REMOTE_ADDRESS) *.yml
+          echo $EQ_FUNCTIONAL_TEST_ENV
+          bzt -o scenarios.eq-test.default-address=$(echo $EQ_FUNCTIONAL_TEST_ENV) *.yml
 
   - task: Terraform Destroy
     config:
