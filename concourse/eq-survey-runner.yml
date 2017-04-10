@@ -1,3 +1,10 @@
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
 resources:
 - name: source-code
   type: git
@@ -16,6 +23,11 @@ resources:
   source:
     uri: https://github.com/jonnyshaw89/taurus-scripts.git
     branch: master
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: {{slack_webhook_url}}
 
 jobs:
 - name: eq-survey-runner
@@ -47,6 +59,7 @@ jobs:
         - |
           cd source-code
           pip install --no-cache-dir -r requirements_for_test.txt
+          sh scripts/build.sh
           sh scripts/run_tests_unit.sh
 
   - task: Terraform Apply
@@ -379,3 +392,9 @@ jobs:
 
           ./survey-runner.sh destroy
 
+  - put: slack-alert
+    params:
+      channel: '#eq-jonshaw-alerts'
+      text: |
+        Build Successful. Check it out at:
+        http://concourse.dev.eq.ons.digital:8080/builds/$BUILD_ID
