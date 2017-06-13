@@ -1,0 +1,343 @@
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: source-code
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-survey-runner.git
+    branch: master
+
+- name: terraform-scripts
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-terraform.git
+    branch: master
+
+- name: taurus-scripts
+  type: git
+  source:
+    uri: https://github.com/jonnyshaw89/taurus-scripts.git
+    branch: master
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: {{slack_webhook_url}}
+
+jobs:
+- name: build
+  plan:
+  - get: source-code
+    trigger: true
+
+  - task: Run Tests
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-survey-runner
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd source-code
+          pip install --no-cache-dir -r requirements_for_test.txt
+          sh scripts/build.sh
+          sh scripts/run_tests_unit.sh
+
+- name: staging-deploy
+  serial_groups: [staging-deploy, staging-functional-tests, staging-accessibility-tests, staging-performance-tests, staging-security-tests]
+  plan:
+  - get: source-code
+    passed: [build]
+    trigger: true
+  - get: terraform-scripts
+    trigger: true
+  - task: Deploy Terraform
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      inputs:
+      - name: terraform-scripts
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          ls terraform-scripts
+          echo "Staging Deploy Staging"
+
+  - task: Deploy Application
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Staging Application Deploy"
+
+- name: functional-tests
+  serial_groups: [staging-functional-tests]
+  plan:
+  - aggregate:
+    - get: source-code
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Test"
+
+- name: accessibility-tests
+  serial_groups: [staging-accessibility-tests]
+  plan:
+  - aggregate:
+    - get: source-code
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Test"
+
+- name: performance-tests
+  serial_groups: [staging-performance-tests]
+  plan:
+  - aggregate:
+    - get: source-code
+      passed: [staging-deploy]
+      trigger: true
+    - get: taurus-scripts
+      trigger: true
+  - task: Test
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: source-code
+      - name: taurus-scripts
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          ls taurus-scripts
+          echo "Test"
+
+- name: security-tests
+  serial_groups: [staging-security-tests]
+  plan:
+  - aggregate:
+    - get: source-code
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Test"
+
+- name: po-approval
+  plan:
+  - aggregate:
+    - get: source-code
+      passed: [functional-tests, accessibility-tests, performance-tests, security-tests]
+  - task: Approved
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Manually Trigger"
+
+
+- name: pre-prod-deploy
+  serial_groups: [pre-prod-deploy, pre-prod-smoke-tests]
+  plan:
+  - get: source-code
+    passed: [po-approval]
+    trigger: true
+  - task: Deploy
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Pre-Prod Deploy"
+
+
+- name: pre-prod-smoke-tests
+  serial_groups: [pre-prod-smoke-tests]
+  plan:
+  - aggregate:
+    - get: source-code
+      passed: [pre-prod-deploy]
+      trigger: true
+  - task: Test
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Test"
+
+
+- name: prod-deploy
+  serial_groups: [prod-deploy, prod-smoke-tests]
+  plan:
+  - get: source-code
+    passed: [pre-prod-smoke-tests]
+  - task: Deploy
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Prod Deploy"
+
+
+- name: prod-smoke-tests
+  serial_groups: [prod-smoke-tests]
+  plan:
+  - aggregate:
+    - get: source-code
+      passed: [prod-deploy]
+      trigger: true
+  - task: Test
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: source-code
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Test"
+
+  - put: slack-alert
+    params:
+      channel: '#eq-jonshaw-alerts'
+      text: |
+        Build Successful. Check it out at:
+        http://concourse.dev.eq.ons.digital:8080/builds/$BUILD_ID
