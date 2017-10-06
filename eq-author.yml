@@ -1,0 +1,269 @@
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: eq-author-deploy
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-author-deploy.git
+    branch: initial-deploy
+
+- name: eq-author
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-author.git
+    branch: master
+
+- name: eq-author-api
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-author-api.git
+    branch: master
+
+- name: eq-publisher
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-publisher.git
+    branch: master
+
+- name: eq-author-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-author
+    aws_access_key_id: {{aws_access_key}}
+    aws_secret_access_key: {{aws_secret_key}}
+
+- name: eq-author-api-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-author-api
+    aws_access_key_id: {{aws_access_key}}
+    aws_secret_access_key: {{aws_secret_key}}
+
+- name: eq-publisher-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-publisher
+    aws_access_key_id: {{aws_access_key}}
+    aws_secret_access_key: {{aws_secret_key}}
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: {{slack_webhook_url}}
+
+jobs:
+- name: build-eq-author
+  plan:
+  - get: eq-author
+    trigger: true
+
+  - task: Run Tests
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-author-build
+
+      inputs:
+      - name: eq-author
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-author
+          yarn global add chimp
+          yarn install
+
+  - put: eq-author-image
+    params:
+      build: eq-author
+      tag: eq-author/.git/HEAD
+    get_params:
+      skip_download: true
+
+- name: build-eq-author-api
+  plan:
+  - get: eq-author-api
+    trigger: true
+
+  - task: Run Tests
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-author-build
+
+      inputs:
+      - name: eq-author-api
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-author-api
+          yarn install
+          yarn test
+          yarn lint -- --max-warnings=0
+
+  - put: eq-author-api-image
+    params:
+      build: eq-author-api
+      tag: eq-author-api/.git/HEAD
+    get_params:
+      skip_download: true
+
+
+- name: build-eq-publisher
+  plan:
+  - get: eq-publisher
+    trigger: true
+
+  - task: Run Tests
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-author-build
+
+      inputs:
+      - name: eq-publisher
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-publisher
+          yarn install
+          yarn test
+          yarn lint
+
+  - put: eq-publisher-image
+    params:
+      build: eq-publisher
+      tag: eq-publisher/.git/HEAD
+    get_params:
+      skip_download: true
+
+- name: author-deploy
+  max_in_flight: 1
+  plan:
+  - get: eq-author
+    passed: [build-eq-author]
+    trigger: true
+  - get: eq-author-api
+    passed: [build-eq-author-api]
+    trigger: true
+  - get: eq-publisher
+    passed: [build-eq-publisher]
+    trigger: true
+  - get: eq-author-deploy
+    trigger: true
+  - task: Deploy
+    params:
+      AWS_ACCESS_KEY_ID: {{aws_access_key}}
+      AWS_SECRET_ACCESS_KEY: {{aws_secret_key}}
+      TF_VAR_env: staging
+      TF_VAR_aws_access_key: {{aws_access_key}}
+      TF_VAR_aws_secret_key: {{aws_secret_key}}
+      TF_VAR_ecs_cluster_name: staging-eq
+      TF_VAR_aws_alb_listener_arn: arn:aws:elasticloadbalancing:eu-west-1:853958762481:listener/app/staging-eq-alb/fdd5364dd38eb7f2/0178760a8f0fcde5
+      TF_VAR_dns_zone_name: dev.eq.ons.digital
+      TF_VAR_docker_registry: 853958762481.dkr.ecr.eu-west-1.amazonaws.com
+      TF_VAR_application_cidrs: ["10.30.20.32/28", "10.30.20.48/28", "10.30.20.64/28"]
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/terraform-build
+
+      inputs:
+      - name: eq-author
+      - name: eq-author-api
+      - name: eq-publisher
+      - name: eq-author-deploy
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-author-deploy
+          author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
+          author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
+          publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="bucket=staging-eq-author-deploy-state" -backend-config="key=author.tfstate" -backend-config="region=eu-west-1" -backend=true -force-copy -get=true -input=false
+
+          terraform plan -var author_tag=$author_tag -var author_api_tag=$author_api_tag -var publisher_tag=$publisher_tag
+          terraform apply -var author_tag=$author_tag -var author_api_tag=$author_api_tag -var publisher_tag=$publisher_tag
+
+  - put: slack-alert
+    params:
+      channel: '#eq-author'
+      text: |
+        Deployed Author to ECS https://staging-author.dev.eq.ons.digital/. Check it out at:
+        http://concourse.dev.eq.ons.digital//builds/$BUILD_ID
+
+- name: author-destroy
+  max_in_flight: 1
+  plan:
+  - get: eq-author
+  - get: eq-author-api
+  - get: eq-publisher
+  - get: eq-author-deploy
+    passed: [author-deploy]
+  - task: Destroy
+    params:
+      AWS_ACCESS_KEY_ID: {{aws_access_key}}
+      AWS_SECRET_ACCESS_KEY: {{aws_secret_key}}
+      TF_VAR_env: staging
+      TF_VAR_aws_access_key: {{aws_access_key}}
+      TF_VAR_aws_secret_key: {{aws_secret_key}}
+      TF_VAR_ecs_cluster_name: staging-eq
+      TF_VAR_aws_alb_listener_arn: arn:aws:elasticloadbalancing:eu-west-1:853958762481:listener/app/staging-eq-alb/fdd5364dd38eb7f2/0178760a8f0fcde5
+      TF_VAR_dns_zone_name: dev.eq.ons.digital
+      TF_VAR_docker_registry: 853958762481.dkr.ecr.eu-west-1.amazonaws.com
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/terraform-build
+
+      inputs:
+      - name: eq-author
+      - name: eq-author-api
+      - name: eq-publisher
+      - name: eq-author-deploy
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-author-deploy
+          author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
+          author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
+          publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="bucket=staging-eq-author-deploy-state" -backend-config="key=author.tfstate" -backend-config="region=eu-west-1" -backend=true -force-copy -get=true -input=false
+
+          terraform destroy --force -var author_tag=$author_tag -var author_api_tag=$author_api_tag -var publisher_tag=$publisher_tag

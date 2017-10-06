@@ -1,0 +1,554 @@
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: eq-survey-runner
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-survey-runner.git
+    branch: master
+
+- name: eq-terraform
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-terraform.git
+    branch: master
+
+- name: eq-terraform-ecs
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-terraform-ecs.git
+    branch: master
+
+- name: eq-survey-launcher-deploy
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-survey-launcher-deploy.git
+    branch: master
+
+- name: eq-survey-runner-deploy
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-survey-runner-deploy.git
+    branch: master
+
+#- name: taurus-scripts
+#  type: git
+#  source:
+#    uri: https://github.com/jonnyshaw89/taurus-scripts.git
+#    branch: master
+
+- name: survey-runner-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-survey-runner
+    aws_access_key_id: {{aws_access_key}}
+    aws_secret_access_key: {{aws_secret_key}}
+
+- name: survey-runner-static-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-survey-runner-static
+    aws_access_key_id: {{aws_access_key}}
+    aws_secret_access_key: {{aws_secret_key}}
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: {{slack_webhook_url}}
+
+jobs:
+- name: build
+  max_in_flight: 2
+  plan:
+  - get: eq-survey-runner
+    trigger: true
+
+  - task: Run Tests
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/survey-runner-build
+
+      inputs:
+      - name: eq-survey-runner
+
+      outputs:
+      - name: compiled-eq-survey-runner
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-survey-runner
+          pip install -r requirements.txt
+          pip install -r requirements_for_test.txt
+          ./scripts/build.sh
+          ./scripts/run_tests_unit.sh
+
+          cp -R ../eq-survey-runner/* ../compiled-eq-survey-runner
+          cp ../eq-survey-runner/.git/HEAD ../compiled-eq-survey-runner/.application-version
+
+  - put: survey-runner-image
+    params:
+      build: compiled-eq-survey-runner
+      tag: eq-survey-runner/.git/HEAD
+    get_params:
+      skip_download: true
+  - put: survey-runner-static-image
+    params:
+      build: compiled-eq-survey-runner
+      dockerfile: compiled-eq-survey-runner/Dockerfile.static
+      tag: eq-survey-runner/.git/HEAD
+    get_params:
+      skip_download: true
+
+- name: staging-deploy
+  serial_groups: [staging-deploy, staging-functional-tests-core, staging-functional-tests-ukis, staging-functional-tests-census, staging-destroy]
+  plan:
+  - get: eq-survey-runner
+    passed: [build]
+    trigger: true
+  - get: eq-terraform
+    trigger: true
+  - get: eq-terraform-ecs
+    trigger: true
+  - get: eq-survey-launcher-deploy
+    trigger: true
+  - get: eq-survey-runner-deploy
+    trigger: true
+  - task: Deploy Terraform
+    params:
+      AWS_ACCESS_KEY_ID: {{aws_access_key}}
+      AWS_SECRET_ACCESS_KEY: {{aws_secret_key}}
+      ANSIBLE_HOST_KEY_CHECKING: False
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/terraform-build
+
+      inputs:
+      - name: eq-terraform
+      - name: eq-survey-runner
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          ls eq-terraform
+          echo "Staging Deploy Staging"
+          cd eq-terraform
+          echo -e {{pem}} > staging.pem
+          chmod 400 staging.pem
+          ansible-galaxy install -f -r survey-runner-queue/ansible-requirements.yml
+
+          survey_runner_tag=$(cat ../eq-survey-runner/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="key=staging"
+          terraform get
+          echo "eu-west-1" | terraform apply \
+            -var 'env={{env}}' \
+            -var 'aws_access_key={{aws_access_key}}' \
+            -var 'aws_secret_key={{aws_secret_key}}' \
+            -var 'aws_key_pair=staging' \
+            -var 'ons_access_ips={{ons_access_ips}}' \
+            -var 'certificate_arn={{certificate_arn}}' \
+            -var 'slack_webhook_path={{slack_webhook_path}}' \
+            -var 'survey_runner_docker_registry={{docker_registry}}' \
+            -var survey_runner_tag=$survey_runner_tag \
+            -var 'ecs_cluster_min_size=2'
+
+  - task: Wait for Deployed version
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/terraform-build
+
+      inputs:
+      - name: eq-survey-runner
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          survey_runner_tag=$(cat eq-survey-runner/.git/HEAD | xargs echo -n)
+          while [[ "$(curl -s https://((env))-new-surveys.dev.eq.ons.digital/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
+
+- name: functional-tests-core
+  serial_groups: [staging-functional-tests-core]
+  plan:
+  - aggregate:
+    - get: eq-survey-runner
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform-ecs
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-launcher-deploy
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-runner-deploy
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    params:
+      TRAVIS: 'true'
+      EQ_FUNCTIONAL_TEST_ENV: https://((env))-new-surveys.dev.eq.ons.digital
+      EQ_FUNCTIONAL_TEST_SUITES: core
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/survey-runner-build
+
+      inputs:
+      - name: eq-survey-runner
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-survey-runner
+          yarn install
+          ./scripts/run_tests_functional.sh
+
+- name: functional-tests-ukis
+  serial_groups: [staging-functional-tests-ukis]
+  plan:
+  - aggregate:
+    - get: eq-survey-runner
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform-ecs
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-launcher-deploy
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-runner-deploy
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    params:
+      TRAVIS: 'true'
+      EQ_FUNCTIONAL_TEST_ENV: https://((env))-new-surveys.dev.eq.ons.digital
+      EQ_FUNCTIONAL_TEST_SUITES: ukis
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/survey-runner-build
+
+      inputs:
+      - name: eq-survey-runner
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-survey-runner
+          yarn install
+          ./scripts/run_tests_functional.sh
+
+- name: functional-tests-census
+  serial_groups: [staging-functional-tests-census]
+  plan:
+  - aggregate:
+    - get: eq-survey-runner
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform-ecs
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-launcher-deploy
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-runner-deploy
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    params:
+      TRAVIS: 'true'
+      EQ_FUNCTIONAL_TEST_ENV: https://((env))-new-surveys.dev.eq.ons.digital
+      EQ_FUNCTIONAL_TEST_SUITES: census
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/survey-runner-build
+
+      inputs:
+      - name: eq-survey-runner
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-survey-runner
+          yarn install
+          ./scripts/run_tests_functional.sh
+
+#- name: accessibility-tests
+#  serial_groups: [staging-accessibility-tests]
+#  plan:
+#  - aggregate:
+#    - get: eq-survey-runner
+#      passed: [staging-deploy]
+#      trigger: true
+#  - task: Test
+#    config:
+#      platform: linux
+#
+#      image_resource:
+#        type: docker-image
+#        source:
+#          repository: jonnyshaw89/eq-survey-runner-functional
+#
+#      inputs:
+#      - name: eq-survey-runner
+#
+#      run:
+#        path: sh
+#        args:
+#        - -exc
+#        - |
+#          echo "Test"
+
+#- name: performance-tests
+#  serial_groups: [staging-performance-tests]
+#  plan:
+#  - aggregate:
+#    - get: eq-survey-runner
+#      passed: [staging-deploy]
+#      trigger: true
+#    - get: taurus-scripts
+#  - task: Test
+#    config:
+#      platform: linux
+#
+#      image_resource:
+#        type: docker-image
+#        source:
+#          repository: jonnyshaw89/survey-runner-build
+#
+#      inputs:
+#      - name: eq-survey-runner
+#      - name: taurus-scripts
+#
+#      run:
+#        path: sh
+#        args:
+#        - -exc
+#        - |
+#          ls taurus-scripts
+#          cd taurus-scripts
+#          pip install bzt
+#          bzt *.yml
+
+#- name: security-tests
+#  serial_groups: [staging-security-tests]
+#  plan:
+#  - aggregate:
+#    - get: eq-survey-runner
+#      passed: [staging-deploy]
+#      trigger: true
+#  - task: Test
+#    config:
+#      platform: linux
+#
+#      image_resource:
+#        type: docker-image
+#        source:
+#          repository: jonnyshaw89/eq-survey-runner-functional
+#
+#      inputs:
+#      - name: eq-survey-runner
+#
+#      run:
+#        path: sh
+#        args:
+#        - -exc
+#        - |
+#          echo "Test"
+
+- name: staging-destroy
+  serial_groups: [staging-deploy, staging-functional-tests, staging-accessibility-tests, staging-performance-tests, staging-security-tests, staging-destroy]
+  plan:
+  - get: eq-survey-runner
+    passed: [staging-deploy]
+  - get: eq-terraform
+  - task: Destroy Terraform
+    params:
+      AWS_ACCESS_KEY_ID: {{aws_access_key}}
+      AWS_SECRET_ACCESS_KEY: {{aws_secret_key}}
+      ANSIBLE_HOST_KEY_CHECKING: False
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/terraform-build
+
+      inputs:
+      - name: eq-terraform
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          ls eq-terraform
+          echo "Destroy Staging"
+          cd eq-terraform
+          echo -e {{pem}} > staging.pem
+          chmod 400 staging.pem
+          terraform init -backend-config="key=staging"
+          terraform get
+          echo "eu-west-1" | terraform destroy -force \
+            -var 'env={{env}}' \
+            -var 'aws_access_key={{aws_access_key}}' \
+            -var 'aws_secret_key={{aws_secret_key}}' \
+            -var 'aws_key_pair=staging' \
+            -var 'ons_access_ips={{ons_access_ips}}' \
+            -var 'certificate_arn={{certificate_arn}}' \
+            -var 'slack_webhook_path={{slack_webhook_path}}' \
+            -var 'survey_runner_docker_registry={{docker_registry}}'
+
+- name: pre-prod-deploy
+  serial_groups: [pre-prod-deploy, pre-prod-smoke-tests]
+  plan:
+  - get: eq-survey-runner
+    passed: [functional-tests-core]
+  - task: Deploy
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Pre-Prod Deploy"
+
+
+- name: pre-prod-smoke-tests
+  serial_groups: [pre-prod-smoke-tests]
+  plan:
+  - aggregate:
+    - get: eq-survey-runner
+      passed: [pre-prod-deploy]
+      trigger: true
+  - task: Test
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: eq-survey-runner
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Test"
+
+
+- name: prod-deploy
+  serial_groups: [prod-deploy, prod-smoke-tests]
+  plan:
+  - get: eq-survey-runner
+    passed: [pre-prod-smoke-tests]
+  - task: Deploy
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-concourse
+
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Prod Deploy"
+
+
+- name: prod-smoke-tests
+  serial_groups: [prod-smoke-tests]
+  plan:
+  - aggregate:
+    - get: eq-survey-runner
+      passed: [prod-deploy]
+      trigger: true
+  - task: Test
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/eq-survey-runner-functional
+
+      inputs:
+      - name: eq-survey-runner
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Test"
+
+  - put: slack-alert
+    params:
+      channel: '#eq-jonshaw-alerts'
+      text: |
+        Build Successful. Check it out at:
+        http://concourse.dev.eq.ons.digital:8080/builds/$BUILD_ID
