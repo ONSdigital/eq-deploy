@@ -10,7 +10,7 @@ resources:
   type: git
   source:
     uri: https://github.com/ONSdigital/eq-survey-runner.git
-    branch: old-test-use-chrome-headless
+    branch: master
 
 - name: eq-terraform
   type: git
@@ -197,6 +197,18 @@ jobs:
     - get: eq-survey-runner
       passed: [staging-deploy]
       trigger: true
+    - get: eq-terraform
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform-ecs
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-launcher-deploy
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-runner-deploy
+      passed: [staging-deploy]
+      trigger: true
   - task: Test
     params:
       TRAVIS: 'true'
@@ -222,71 +234,93 @@ jobs:
           yarn install
           ./scripts/run_tests_functional.sh
 
-#- name: functional-tests-ukis
-#  serial_groups: [staging-functional-tests-ukis]
-#  plan:
-#  - aggregate:
-#    - get: eq-survey-runner
-#      passed: [staging-deploy]
-#      trigger: true
-#  - task: Test
-#    params:
-#      TRAVIS: 'true'
-#      EQ_RUN_FUNCTIONAL_TESTS: true
-#      EQ_FUNCTIONAL_TEST_ENV: https://((env))-new-surveys.dev.eq.ons.digital
-#      EQ_FUNCTIONAL_TEST_SUITES: ukis
-#    config:
-#      platform: linux
-#
-#      image_resource:
-#        type: docker-image
-#        source:
-#          repository: jonnyshaw89/survey-runner-build
-#
-#      inputs:
-#      - name: eq-survey-runner
-#
-#      run:
-#        path: sh
-#        args:
-#        - -exc
-#        - |
-#          cd eq-survey-runner
-#          yarn install
-#          ./scripts/run_tests_functional.sh
-#
-#- name: functional-tests-census
-#  serial_groups: [staging-functional-tests-census]
-#  plan:
-#  - aggregate:
-#    - get: eq-survey-runner
-#      passed: [staging-deploy]
-#      trigger: true
-#  - task: Test
-#    params:
-#      TRAVIS: 'true'
-#      EQ_RUN_FUNCTIONAL_TESTS: true
-#      EQ_FUNCTIONAL_TEST_ENV: https://((env))-new-surveys.dev.eq.ons.digital
-#      EQ_FUNCTIONAL_TEST_SUITES: census
-#    config:
-#      platform: linux
-#
-#      image_resource:
-#        type: docker-image
-#        source:
-#          repository: jonnyshaw89/survey-runner-build
-#
-#      inputs:
-#      - name: eq-survey-runner
-#
-#      run:
-#        path: sh
-#        args:
-#        - -exc
-#        - |
-#          cd eq-survey-runner
-#          yarn install
-#          ./scripts/run_tests_functional.sh
+- name: functional-tests-ukis
+  serial_groups: [staging-functional-tests-ukis]
+  plan:
+  - aggregate:
+    - get: eq-survey-runner
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform-ecs
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-launcher-deploy
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-runner-deploy
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    params:
+      TRAVIS: 'true'
+      EQ_FUNCTIONAL_TEST_ENV: https://((env))-new-surveys.dev.eq.ons.digital
+      EQ_FUNCTIONAL_TEST_SUITES: ukis
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/survey-runner-build
+
+      inputs:
+      - name: eq-survey-runner
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-survey-runner
+          yarn install
+          ./scripts/run_tests_functional.sh
+
+- name: functional-tests-census
+  serial_groups: [staging-functional-tests-census]
+  plan:
+  - aggregate:
+    - get: eq-survey-runner
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-terraform-ecs
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-launcher-deploy
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-runner-deploy
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    params:
+      TRAVIS: 'true'
+      EQ_FUNCTIONAL_TEST_ENV: https://((env))-new-surveys.dev.eq.ons.digital
+      EQ_FUNCTIONAL_TEST_SUITES: census
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: jonnyshaw89/survey-runner-build
+
+      inputs:
+      - name: eq-survey-runner
+
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-survey-runner
+          yarn install
+          ./scripts/run_tests_functional.sh
 
 #- name: accessibility-tests
 #  serial_groups: [staging-accessibility-tests]
