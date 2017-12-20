@@ -199,6 +199,8 @@ jobs:
           repository: onsdigital/eq-author-build
       inputs:
       - name: eq-author
+      outputs:
+      - name: build_args
       run:
         path: sh
         args:
@@ -206,10 +208,14 @@ jobs:
         - |
           cd eq-author
           yarn install
+
+          eq_author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
+          echo "{\"APPLICATION_VERSION\":\""$eq_author_tag"\"}" > ../build_args/args
   - put: eq-author-image
     params:
       build: eq-author
       tag: eq-author/.git/HEAD
+      build_args_file: build_args/args
     get_params:
       skip_download: true
 
@@ -226,6 +232,8 @@ jobs:
           repository: onsdigital/eq-author-build
       inputs:
       - name: eq-author-api
+      outputs:
+      - name: build_args
       run:
         path: sh
         args:
@@ -233,10 +241,14 @@ jobs:
         - |
           cd eq-author-api
           yarn install
+
+          eq_author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
+          echo "{\"APPLICATION_VERSION\":\""$eq_author_api_tag"\"}" > ../build_args/args
   - put: eq-author-api-image
     params:
       build: eq-author-api
       tag: eq-author-api/.git/HEAD
+      build_args_file: build_args/args
     get_params:
       skip_download: true
 
@@ -253,6 +265,8 @@ jobs:
           repository: onsdigital/eq-author-build
       inputs:
       - name: eq-publisher
+      outputs:
+      - name: build_args
       run:
         path: sh
         args:
@@ -260,10 +274,14 @@ jobs:
         - |
           cd eq-publisher
           yarn install
+
+          eq_publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
+          echo "{\"APPLICATION_VERSION\":\""$eq_publisher_tag"\"}" > ../build_args/args
   - put: eq-publisher-image
     params:
       build: eq-publisher
       tag: eq-publisher/.git/HEAD
+      build_args_file: build_args/args
     get_params:
       skip_download: true
 
@@ -487,8 +505,8 @@ jobs:
             -var publisher_tag=$eq_publisher_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var schema_validator_tag=$eq_schema_validator_tag
-
-  - task: Wait for Deployed version
+  - task: Wait for Deployed Survey Runner
+    timeout: 10m
     config:
       platform: linux
       image_resource:
@@ -504,6 +522,57 @@ jobs:
         - |
           survey_runner_tag=$(cat eq-survey-runner/.git/HEAD | xargs echo -n)
           while [[ "$(curl -s https://staging-new-surveys.dev.eq.ons.digital/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
+  - task: Wait for Deployed Author API
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-author-api
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          author_api_tag=$(cat eq-author-api/.git/HEAD | xargs echo -n)
+          while [[ "$(curl -s https://staging-author-api.dev.eq.ons.digital/status)" != *"$author_api_tag"* ]]; do sleep 5; done
+  - task: Wait for Deployed Author
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-author
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          author_tag=$(cat eq-author/.git/HEAD | xargs echo -n)
+          while [[ "$(curl -s https://staging-author.dev.eq.ons.digital/status.json)" != *"$author_tag"* ]]; do sleep 5; done
+  - task: Wait for Deployed Publisher
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-publisher
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          publisher_tag=$(cat eq-publisher/.git/HEAD | xargs echo -n)
+          while [[ "$(curl -s https://staging-publisher.dev.eq.ons.digital/status)" != *"$publisher_tag"* ]]; do sleep 5; done
 
 - name: functional-tests-core
   serial_groups: [staging-functional-tests-core]
