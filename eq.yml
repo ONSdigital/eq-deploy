@@ -84,6 +84,12 @@ resources:
     uri: https://github.com/ONSdigital/eq-schema-validator.git
     branch: master
 
+- name: eq-smoke-tests
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-smoke-tests.git
+    branch: master
+
 - name: survey-runner-image
   type: docker-image
   source:
@@ -410,7 +416,7 @@ jobs:
       skip_download: true
 
 - name: staging-deploy
-  serial_groups: [staging-deploy, staging-functional-tests-core, staging-functional-tests-ukis, staging-functional-tests-census, staging-destroy]
+  serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
   plan:
   - get: eq-survey-runner
     passed: [build-eq-survey-runner]
@@ -505,6 +511,16 @@ jobs:
             -var publisher_tag=$eq_publisher_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var schema_validator_tag=$eq_schema_validator_tag
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-runner #eq-author'
+        attachments:
+          - pretext: Staging Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+
   - task: Wait for Deployed Survey Runner
     timeout: 10m
     config:
@@ -522,6 +538,15 @@ jobs:
         - |
           survey_runner_tag=$(cat eq-survey-runner/.git/HEAD | xargs echo -n)
           while [[ "$(curl -s https://staging-new-surveys.dev.eq.ons.digital/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-runner'
+        attachments:
+          - pretext: Staging Survey Runner Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
   - task: Wait for Deployed Author API
     timeout: 10m
     config:
@@ -539,6 +564,15 @@ jobs:
         - |
           author_api_tag=$(cat eq-author-api/.git/HEAD | xargs echo -n)
           while [[ "$(curl -s https://staging-author-api.dev.eq.ons.digital/status)" != *"$author_api_tag"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-author'
+        attachments:
+          - pretext: Staging Author API Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
   - task: Wait for Deployed Author
     timeout: 10m
     config:
@@ -556,7 +590,15 @@ jobs:
         - |
           author_tag=$(cat eq-author/.git/HEAD | xargs echo -n)
           while [[ "$(curl -s https://staging-author.dev.eq.ons.digital/status.json)" != *"$author_tag"* ]]; do sleep 5; done
-  - task: Wait for Deployed Publisher
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-author'
+        attachments:
+          - pretext: Staging Author Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
     timeout: 10m
     config:
       platform: linux
@@ -573,38 +615,80 @@ jobs:
         - |
           publisher_tag=$(cat eq-publisher/.git/HEAD | xargs echo -n)
           while [[ "$(curl -s https://staging-publisher.dev.eq.ons.digital/status)" != *"$publisher_tag"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-author'
+        attachments:
+          - pretext: Staging Publisher Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
 
-- name: functional-tests-core
-  serial_groups: [staging-functional-tests-core]
+- name: smoke-tests
+  serial_groups: [staging-smoke-tests]
   plan:
   - aggregate:
+    - get: eq-smoke-tests
+      trigger: true
     - get: eq-survey-runner
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-author
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-author-api
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-publisher
+      passed: [staging-deploy]
+      trigger: true
+    - get: go-launch-a-survey
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-schema-validator
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-register
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-survey-runner-deploy
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-author-deploy
       passed: [staging-deploy]
       trigger: true
   - task: Test
     params:
-      TRAVIS: 'true'
-      EQ_FUNCTIONAL_TEST_ENV: https://staging-new-surveys.dev.eq.ons.digital
-      EQ_FUNCTIONAL_TEST_SUITES: core
+      BASE_URL: https://staging-author.dev.eq.ons.digital
     config:
       platform: linux
       image_resource:
         type: docker-image
         source:
-          repository: onsdigital/eq-python-build
+          repository: onsdigital/eq-author-build
       inputs:
-      - name: eq-survey-runner
+      - name: eq-smoke-tests
       run:
         path: sh
         args:
         - -exc
         - |
-          cd eq-survey-runner
+          cd eq-smoke-tests
           yarn install
-          ./scripts/run_tests_functional.sh
+          yarn test_headless
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-runner #eq-author'
+        attachments:
+          - pretext: Staging smoke-tests Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
 
 - name: staging-destroy
-  serial_groups: [staging-deploy, staging-functional-tests, staging-accessibility-tests, staging-performance-tests, staging-security-tests, staging-destroy]
+  serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
   plan:
   - get: eq-terraform
     passed: [staging-deploy]
@@ -652,31 +736,31 @@ jobs:
   serial_groups: [pre-prod-deploy, pre-prod-smoke-tests]
   plan:
   - get: eq-survey-runner
-    passed: [functional-tests-core]
+    passed: [smoke-tests]
     trigger: true
   - get: eq-author
-    passed: [staging-deploy]
+    passed: [smoke-tests]
     trigger: true
   - get: eq-author-api
-    passed: [staging-deploy]
+    passed: [smoke-tests]
     trigger: true
   - get: eq-publisher
-    passed: [staging-deploy]
+    passed: [smoke-tests]
     trigger: true
   - get: go-launch-a-survey
-    passed: [staging-deploy]
+    passed: [smoke-tests]
     trigger: true
   - get: eq-schema-validator
-    passed: [staging-deploy]
+    passed: [smoke-tests]
     trigger: true
   - get: eq-survey-register
-    passed: [staging-deploy]
+    passed: [smoke-tests]
     trigger: true
   - get: eq-survey-runner-deploy
-    passed: [staging-deploy]
+    passed: [smoke-tests]
     trigger: true
   - get: eq-author-deploy
-    passed: [staging-deploy]
+    passed: [smoke-tests]
     trigger: true
   - get: eq-ecs-deploy
   - task: Deploy Survey Runner
@@ -874,6 +958,16 @@ jobs:
   - put: slack-alert
     params:
       channel: '#eq-runner'
-      text: |
-        Pre-prod deployment successful. Check it out at:
-        http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+      attachments:
+        - pretext: Pre-prod deployment successful
+          color: good
+          title: Concourse Build $BUILD_ID
+          title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+  - put: slack-alert
+    params:
+      channel: '#eq-author'
+      attachments:
+        - pretext: Pre-prod deployment successful
+          color: good
+          title: Concourse Build $BUILD_ID
+          title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
