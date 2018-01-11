@@ -928,9 +928,9 @@ jobs:
       TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
       TF_VAR_survey_launcher_url: https://preprod-new-surveys-launch.eq.ons.digital
       TF_VAR_application_cidrs: [10.30.21.192/28,10.30.21.208/28,10.30.21.224/28]
-      TF_VAR_author_firebase_project_id: ((preprod_author_firebase_project_id))
-      TF_VAR_author_firebase_api_key: ((preprod_author_firebase_api_key))
-      TF_VAR_author_firebase_messaging_sender_id: ((preprod_author_firebase_messaging_sender_id))
+      TF_VAR_firebase_project_id: ((preprod_author_firebase_project_id))
+      TF_VAR_firebase_api_key: ((preprod_author_firebase_api_key))
+      TF_VAR_firebase_messaging_sender_id: ((preprod_author_firebase_messaging_sender_id))
     config:
       platform: linux
       image_resource:
