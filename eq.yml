@@ -599,6 +599,7 @@ jobs:
             color: danger
             title: Concourse Build $BUILD_ID
             title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+  - task: Wait for Deployed Publisher
     timeout: 10m
     config:
       platform: linux
@@ -779,6 +780,7 @@ jobs:
       TF_VAR_database_name: {{preprod_database_name}}
       TF_VAR_rabbitmq_ip_prime: {{preprod_rabbitmq_ip_prime}}
       TF_VAR_rabbitmq_ip_failover: {{preprod_rabbitmq_ip_failover}}
+      TF_VAR_submitted_responses_table_name: preprod-submitted-responses
       TF_VAR_google_analytics_code: {{preprod_google_analytics_code}}
       TF_VAR_s3_secrets_bucket: 'preprod-secrets-runner'
       TF_VAR_secrets_file_name: '../../../secrets/secrets.yml'
