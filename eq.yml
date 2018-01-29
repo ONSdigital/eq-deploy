@@ -151,6 +151,13 @@ resources:
   source:
     url: {{slack_webhook_url}}
 
+- name: evening-trigger
+  type: time
+  source:
+    start: 10:00 PM
+    stop: 11:00 PM
+    location: Europe/London
+
 jobs:
 - name: build-eq-survey-runner
   plan:
@@ -694,6 +701,8 @@ jobs:
 - name: staging-destroy
   serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
   plan:
+  - get: evening-trigger
+    trigger: true
   - get: eq-terraform
     passed: [staging-deploy]
   - task: Destroy Terraform
