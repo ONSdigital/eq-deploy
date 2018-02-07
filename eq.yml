@@ -945,6 +945,7 @@ jobs:
       TF_VAR_firebase_project_id: ((preprod_author_firebase_project_id))
       TF_VAR_firebase_api_key: ((preprod_author_firebase_api_key))
       TF_VAR_firebase_messaging_sender_id: ((preprod_author_firebase_messaging_sender_id))
+      TF_VAR_schema_validator_url: https://preprod-schema-validator.eq.ons.digital
     config:
       platform: linux
       image_resource:
