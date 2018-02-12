@@ -1,6 +1,6 @@
 FROM ubuntu:16.04
 
-ENV TERRAFORM_VERSION=0.9.6
+ENV TERRAFORM_VERSION=0.10.8
 
 RUN apt-get update -y && \
     apt-get install -y git curl unzip && \
