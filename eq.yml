@@ -483,6 +483,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-terraform
       - name: eq-survey-runner
@@ -536,6 +537,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-survey-runner
       run:
@@ -562,6 +564,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-author-api
       run:
@@ -588,6 +591,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-author
       run:
@@ -614,6 +618,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-publisher
       run:
@@ -730,6 +735,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-terraform
       run:
@@ -803,6 +809,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-survey-runner
       - name: eq-survey-runner-deploy
@@ -839,6 +846,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: go-launch-a-survey
       - name: eq-ecs-deploy
@@ -878,6 +886,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-schema-validator
       - name: eq-ecs-deploy
@@ -914,6 +923,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-survey-register
       - name: eq-ecs-deploy
@@ -952,6 +962,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-author-deploy
       - name: eq-author
@@ -982,6 +993,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-survey-runner
       run:
@@ -1008,6 +1020,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-author-api
       run:
@@ -1034,6 +1047,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-author
       run:
@@ -1060,6 +1074,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
+          tag: 0.10.8
       inputs:
       - name: eq-publisher
       run:
