@@ -483,7 +483,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-terraform
       - name: eq-survey-runner
@@ -499,6 +498,8 @@ jobs:
         - |
           echo "Deploy Staging"
           cd eq-terraform
+          tfenv install
+
           echo -e {{pem}} > staging.pem
           chmod 400 staging.pem
           ansible-galaxy install -f -r survey-runner-queue/ansible-requirements.yml
@@ -537,7 +538,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-survey-runner
       run:
@@ -564,7 +564,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-author-api
       run:
@@ -591,7 +590,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-author
       run:
@@ -618,7 +616,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-publisher
       run:
@@ -735,7 +732,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-terraform
       run:
@@ -745,6 +741,8 @@ jobs:
         - |
           echo "Destroy Staging"
           cd eq-terraform
+          tfenv install
+
           echo -e "" > staging.pem
 
           terraform init -backend-config="key="staging""
@@ -790,9 +788,12 @@ jobs:
       TF_VAR_env: 'preprod-new'
       TF_VAR_aws_access_key: '((preprod_aws_access_key))'
       TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
       TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_slack_alert_sns_arn: {{preprod_slack_alert_sns_arn}}
       TF_VAR_database_host: {{preprod_database_host}}
       TF_VAR_database_port: {{preprod_database_port}}
       TF_VAR_database_name: {{preprod_database_name}}
@@ -809,7 +810,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-survey-runner
       - name: eq-survey-runner-deploy
@@ -819,6 +819,7 @@ jobs:
         - -exc
         - |
           cd eq-survey-runner-deploy
+          tfenv install 0.10.8
 
           survey_runner_tag=$(cat ../eq-survey-runner/.git/HEAD | xargs echo -n)
 
@@ -833,9 +834,10 @@ jobs:
       TF_VAR_env: 'preprod-new'
       TF_VAR_aws_access_key: '((preprod_aws_access_key))'
       TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
       TF_VAR_service_name: 'surveys-launch'
       TF_VAR_container_name: 'go-launch-a-survey'
       TF_VAR_container_port: 8000
@@ -846,7 +848,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: go-launch-a-survey
       - name: eq-ecs-deploy
@@ -856,6 +857,7 @@ jobs:
         - -exc
         - |
           cd eq-ecs-deploy
+          tfenv install
 
           survey_launcher_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
 
@@ -872,9 +874,10 @@ jobs:
       TF_VAR_env: 'preprod'
       TF_VAR_aws_access_key: '((preprod_aws_access_key))'
       TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
       TF_VAR_service_name: 'schema-validator'
       TF_VAR_container_name: 'eq-schema-validator'
       TF_VAR_container_port: 5000
@@ -886,7 +889,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-schema-validator
       - name: eq-ecs-deploy
@@ -896,6 +898,7 @@ jobs:
         - -exc
         - |
           cd eq-ecs-deploy
+          tfenv install
 
           schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
 
@@ -910,9 +913,10 @@ jobs:
       TF_VAR_env: 'preprod'
       TF_VAR_aws_access_key: '((preprod_aws_access_key))'
       TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
       TF_VAR_service_name: 'survey-register'
       TF_VAR_container_name: 'eq-survey-register'
       TF_VAR_container_port: 8080
@@ -923,7 +927,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-survey-register
       - name: eq-ecs-deploy
@@ -933,6 +936,7 @@ jobs:
         - -exc
         - |
           cd eq-ecs-deploy
+          tfenv install
 
           survey_register_tag=$(cat ../eq-survey-register/.git/HEAD | xargs echo -n)
 
@@ -947,9 +951,10 @@ jobs:
       TF_VAR_env: 'preprod'
       TF_VAR_aws_access_key: '((preprod_aws_access_key))'
       TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
       TF_VAR_survey_launcher_url: https://preprod-new-surveys-launch.eq.ons.digital
       TF_VAR_application_cidrs: [10.30.21.192/28,10.30.21.208/28,10.30.21.224/28]
       TF_VAR_firebase_project_id: ((preprod_author_firebase_project_id))
@@ -962,7 +967,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-author-deploy
       - name: eq-author
@@ -974,6 +978,7 @@ jobs:
         - -exc
         - |
           cd eq-author-deploy
+          tfenv install 0.10.8
 
           author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
           author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
@@ -993,7 +998,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-survey-runner
       run:
@@ -1020,7 +1024,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-author-api
       run:
@@ -1047,7 +1050,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-author
       run:
@@ -1074,7 +1076,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          tag: 0.10.8
       inputs:
       - name: eq-publisher
       run:
