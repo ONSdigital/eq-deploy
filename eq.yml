@@ -42,12 +42,6 @@ resources:
     uri: https://github.com/ONSdigital/eq-survey-runner-deploy.git
     branch: master
 
-- name: eq-author-deploy
-  type: git
-  source:
-    uri: https://github.com/ONSdigital/eq-author-deploy.git
-    branch: master
-
 - name: eq-author
   type: git
   source:
@@ -456,8 +450,6 @@ jobs:
     trigger: true
   - get: eq-survey-runner-deploy
     trigger: true
-  - get: eq-author-deploy
-    trigger: true
   - task: Deploy Terraform
     params:
       AWS_ACCESS_KEY_ID: ((dev_aws_access_key))
@@ -529,7 +521,6 @@ jobs:
             color: danger
             title: Concourse Build $BUILD_ID
             title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
-
   - task: Wait for Deployed Survey Runner
     timeout: 10m
     config:
@@ -668,9 +659,6 @@ jobs:
     - get: eq-survey-runner-deploy
       passed: [staging-deploy]
       trigger: true
-    - get: eq-author-deploy
-      passed: [staging-deploy]
-      trigger: true
   - task: Test
     params:
       BASE_URL: https://staging-author.dev.eq.ons.digital
@@ -680,6 +668,7 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-author-build
+          tag: chrome-64
       inputs:
       - name: eq-smoke-tests
       run:
@@ -776,9 +765,6 @@ jobs:
   - get: eq-survey-runner-deploy
     passed: [smoke-tests]
     trigger: true
-  - get: eq-author-deploy
-    passed: [smoke-tests]
-    trigger: true
   - get: eq-ecs-deploy
   - task: Deploy Survey Runner
     params:
@@ -838,12 +824,13 @@ jobs:
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
       TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_slack_alert_sns_arn: {{preprod_slack_alert_sns_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
       TF_VAR_service_name: 'surveys-launch'
       TF_VAR_container_name: 'go-launch-a-survey'
       TF_VAR_container_port: 8000
       TF_VAR_listener_rule_priority: 101
       TF_VAR_task_has_iam_policy: true
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
       platform: linux
       image_resource:
@@ -880,12 +867,13 @@ jobs:
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
       TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_slack_alert_sns_arn: {{preprod_slack_alert_sns_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
       TF_VAR_service_name: 'schema-validator'
       TF_VAR_container_name: 'eq-schema-validator'
       TF_VAR_container_port: 5000
       TF_VAR_listener_rule_priority: 500
       TF_VAR_healthcheck_path: '/status'
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
       platform: linux
       image_resource:
@@ -920,11 +908,12 @@ jobs:
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
       TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_slack_alert_sns_arn: {{preprod_slack_alert_sns_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
       TF_VAR_service_name: 'survey-register'
       TF_VAR_container_name: 'eq-survey-register'
       TF_VAR_container_port: 8080
       TF_VAR_listener_rule_priority: 600
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
       platform: linux
       image_resource:
@@ -951,7 +940,6 @@ jobs:
     params:
       AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
       AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
-      ANSIBLE_HOST_KEY_CHECKING: False
       TF_VAR_env: 'preprod'
       TF_VAR_aws_access_key: '((preprod_aws_access_key))'
       TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
@@ -959,12 +947,15 @@ jobs:
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
       TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_survey_launcher_url: https://preprod-new-surveys-launch.eq.ons.digital
-      TF_VAR_application_cidrs: [10.30.21.192/28,10.30.21.208/28,10.30.21.224/28]
-      TF_VAR_firebase_project_id: ((preprod_author_firebase_project_id))
-      TF_VAR_firebase_api_key: ((preprod_author_firebase_api_key))
-      TF_VAR_firebase_messaging_sender_id: ((preprod_author_firebase_messaging_sender_id))
-      TF_VAR_schema_validator_url: https://preprod-schema-validator.eq.ons.digital
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'author'
+      TF_VAR_container_name: 'eq-author'
+      TF_VAR_container_port: 3000
+      TF_VAR_listener_rule_priority: 102
+      TF_VAR_healthcheck_path: '/status.json'
+      TF_VAR_healthcheck_grace_period_seconds: 60
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+      TF_VAR_high_cpu_threshold: 80
     config:
       platform: linux
       image_resource:
@@ -972,27 +963,105 @@ jobs:
         source:
           repository: onsdigital/eq-terraform-build
       inputs:
-      - name: eq-author-deploy
       - name: eq-author
-      - name: eq-author-api
-      - name: eq-publisher
+      - name: eq-ecs-deploy
       run:
         path: bash
         args:
         - -exc
         - |
-          cd eq-author-deploy
-          tfenv install 0.10.8
+          cd eq-ecs-deploy
+          tfenv install
 
           author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author""
+          terraform apply \
+          -var container_tag=$author_tag \
+          -var 'container_environment_variables="{\"name\": \"REACT_APP_BASE_NAME\", \"value\": \"/eq-author\" },{ \"name\": \"REACT_APP_USE_MOCK_API\", \"value\": \"false\" },{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish\" },{ \"name\": \"REACT_APP_GO_LAUNCH_A_SURVEY_URL\", \"value\": \"https://preprod-new-surveys-launch.eq.ons.digital/quick-launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"false\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_ENABLE_AUTH\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" },{ \"name\": \"REACT_APP_FIREBASE_MESSAGING_SENDER_ID\", \"value\": \"((preprod_author_firebase_messaging_sender_id))\" }"'
+          
+  - task: Deploy Author-Api
+    params:
+      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
+      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
+      TF_VAR_env: 'preprod'
+      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
+      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'preprod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'author-api'
+      TF_VAR_container_name: 'eq-author-api'
+      TF_VAR_container_port: 4000
+      TF_VAR_listener_rule_priority: 103
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-author-api
+      - name: eq-ecs-deploy
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy
+          tfenv install
+
           author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-api""
+          terraform apply \
+          -var container_tag=$author_api_tag \
+          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}"'
+  - task: Deploy Publisher
+    params:
+      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
+      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
+      TF_VAR_env: 'preprod'
+      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
+      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'preprod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'publisher'
+      TF_VAR_container_name: 'eq-publisher'
+      TF_VAR_container_port: 9000
+      TF_VAR_listener_rule_priority: 104
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-publisher
+      - name: eq-ecs-deploy
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy
+          tfenv install
+
           publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author"" -backend-config="region="eu-west-1""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-publisher""
           terraform apply \
-          -var author_tag=$author_tag \
-          -var author_api_tag=$author_api_tag \
-          -var publisher_tag=$publisher_tag
+          -var container_tag=$publisher_tag \
+          -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital/validate\" }"'
 
   - task: Wait for Deployed Survey Runner
     timeout: 10m
