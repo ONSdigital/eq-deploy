@@ -838,10 +838,12 @@ jobs:
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
       TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_slack_alert_sns_arn: {{preprod_slack_alert_sns_arn}}
       TF_VAR_service_name: 'surveys-launch'
       TF_VAR_container_name: 'go-launch-a-survey'
       TF_VAR_container_port: 8000
       TF_VAR_listener_rule_priority: 101
+      TF_VAR_task_has_iam_policy: true
     config:
       platform: linux
       image_resource:
@@ -878,6 +880,7 @@ jobs:
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
       TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_slack_alert_sns_arn: {{preprod_slack_alert_sns_arn}}
       TF_VAR_service_name: 'schema-validator'
       TF_VAR_container_name: 'eq-schema-validator'
       TF_VAR_container_port: 5000
@@ -917,6 +920,7 @@ jobs:
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
       TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_slack_alert_sns_arn: {{preprod_slack_alert_sns_arn}}
       TF_VAR_service_name: 'survey-register'
       TF_VAR_container_name: 'eq-survey-register'
       TF_VAR_container_port: 8080
