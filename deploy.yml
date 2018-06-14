@@ -1,0 +1,225 @@
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: eq-survey-runner-pre-release
+  type: github-release
+  source:
+    owner: ONSdigital
+    repository: eq-survey-runner
+    access_token: ((github_access_token))
+    release: true
+    pre_release: true
+
+- name: survey-runner-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-survey-runner
+    aws_access_key_id: ((dev_aws_access_key))
+    aws_secret_access_key: ((dev_aws_secret_key))
+
+- name: survey-runner-static-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-survey-runner-static
+    aws_access_key_id: ((dev_aws_access_key))
+    aws_secret_access_key: ((dev_aws_secret_key))
+
+- name: eq-ecs-deploy
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-ecs-deploy.git
+    branch: master
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: {{slack_webhook_url}}
+
+jobs:
+- name: build-eq-survey-runner
+  plan:
+  - get: eq-survey-runner-pre-release
+    params:
+      include_source_tarball: true
+    trigger: true
+  - task: Build Image
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-python-build
+      inputs:
+      - name: eq-survey-runner-pre-release
+      outputs:
+      - name: compiled-eq-survey-runner
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-survey-runner-pre-release
+
+          mkdir eq-survey-runner
+          tar -xzf source.tar.gz -C eq-survey-runner --strip-components=1
+
+          cd eq-survey-runner
+          pipenv install --dev
+          yarn compile
+
+          cp -R ../eq-survey-runner/* ../../compiled-eq-survey-runner
+          cp ../tag ../../compiled-eq-survey-runner/.application-version
+
+
+  - put: survey-runner-image
+    params:
+      build: compiled-eq-survey-runner
+      tag: eq-survey-runner-pre-release/tag
+    get_params:
+      skip_download: true
+  - put: survey-runner-static-image
+    params:
+      build: compiled-eq-survey-runner
+      dockerfile: compiled-eq-survey-runner/Dockerfile.static
+      tag: eq-survey-runner-pre-release/tag
+    get_params:
+      skip_download: true
+
+- name: pre-prod-deploy
+  max_in_flight: 1
+  plan:
+  - get: eq-survey-runner-pre-release
+    passed: [build-eq-survey-runner]
+    params:
+      include_source_tarball: true
+    trigger: true
+    params:
+      include_source_tarball: true
+  - get: eq-ecs-deploy
+  - task: Deploy Survey Runner
+    params:
+      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
+      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
+      TF_VAR_env: 'preprod-new'
+      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
+      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'preprod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'surveys'
+      TF_VAR_container_name: 'eq-survey-runner'
+      TF_VAR_container_port: 5000
+      TF_VAR_listener_rule_priority: 10
+      TF_VAR_task_has_iam_policy: true
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+      TF_VAR_healthcheck_path: '/status'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-survey-runner-pre-release
+      - name: eq-ecs-deploy
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy
+          tfenv install
+
+          release_version=$(cat ../eq-survey-runner-pre-release/tag)
+
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-runner""
+          terraform apply \
+          -var container_tag=$release_version \
+          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((preprod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((preprod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((preprod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((preprod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((preprod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((preprod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"preprod-submitted-responses\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"True\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"PreProd - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
+          -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((preprod_submitted_responses_table_arn))\"}]}"'
+  - task: Deploy Survey Runner Static
+    params:
+      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
+      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
+      TF_VAR_env: 'preprod-new'
+      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
+      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'preprod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_dns_record_name: 'preprod-new-surveys.eq.ons.digital'
+      TF_VAR_service_name: 'surveys-static'
+      TF_VAR_container_name: 'eq-survey-runner-static'
+      TF_VAR_container_port: 80
+      TF_VAR_listener_rule_priority: 5
+      TF_VAR_alb_listener_path_pattern: '/s/*'
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-survey-runner-pre-release
+      - name: eq-ecs-deploy
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy
+          tfenv install
+
+          release_version=$(cat ../eq-survey-runner-pre-release/tag)
+
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-runner-static""
+          terraform apply \
+          -var container_tag=$release_version
+
+  - task: Wait for Deployed Survey Runner
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-survey-runner-pre-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+
+          survey_runner_tag=$(cat eq-survey-runner-pre-release/tag)
+          while [[ "$(curl -s https://preprod-new-surveys.eq.ons.digital/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
+
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-runner'
+        attachments:
+          - pretext: PreProd Survey Runner Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+
+  - put: slack-alert
+    params:
+      channel: '#eq-runner'
+      attachments:
+        - pretext: PreProd deployment successful
+          color: good
+          title: Concourse Build $BUILD_ID
+          title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID

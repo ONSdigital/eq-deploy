@@ -6,8 +6,9 @@ The following command can be used to login to Concourse
 
 To apply the `eq.yml` pipleine you will need to create a valid secrets file (`secrets.yml`) in the same format as the example file (`secrets.yml.example`)
 
-Once logged in you are able to add/update the build plan with the command below.
+Once logged in you are able to add/update the build plans with the commands below.
 
 `fly -t eq set-pipeline -p eq -c eq.yml  --load-vars-from secrets.yml`
+`fly -t eq set-pipeline -p eq-deploy -c deploy.yml  --load-vars-from secrets.yml`
 
 When updating a build plan, a diff is shown for you to confirm the changes you are making.
