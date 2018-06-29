@@ -443,7 +443,7 @@ jobs:
       TF_VAR_aws_access_key: '((dev_aws_access_key))'
       TF_VAR_aws_secret_key: '((dev_aws_secret_key))'
       TF_VAR_aws_key_pair: staging
-      TF_VAR_ons_access_ips: {{ons_access_ips}}
+      TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
       TF_VAR_certificate_arn: {{certificate_arn}}
       TF_VAR_slack_webhook_path: {{slack_webhook_path}}
       TF_VAR_survey_runner_docker_registry: {{docker_registry}}
