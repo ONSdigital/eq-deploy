@@ -140,6 +140,13 @@ resources:
     stop: 11:00 PM
     location: Europe/London
 
+- name: morning-trigger
+  type: time
+  source:
+    start: 06:00 AM
+    stop: 07:00 AM
+    location: Europe/London
+
 jobs:
 - name: build-eq-survey-runner
   plan:
@@ -407,6 +414,8 @@ jobs:
 - name: staging-deploy
   serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
   plan:
+  - get: morning-trigger
+    trigger: true
   - get: eq-survey-runner
     passed: [build-eq-survey-runner]
     trigger: true
@@ -444,7 +453,7 @@ jobs:
       TF_VAR_aws_secret_key: '((dev_aws_secret_key))'
       TF_VAR_aws_key_pair: staging
       TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
-      TF_VAR_certificate_arn: {{certificate_arn}}
+      TF_VAR_certificate_arn: {{staging_certificate_arn}}
       TF_VAR_slack_webhook_path: {{slack_webhook_path}}
       TF_VAR_survey_runner_docker_registry: {{docker_registry}}
       TF_VAR_survey_launcher_registry: {{docker_registry}}
@@ -685,8 +694,8 @@ jobs:
       TF_VAR_aws_access_key: '((dev_aws_access_key))'
       TF_VAR_aws_secret_key: '((dev_aws_secret_key))'
       TF_VAR_aws_key_pair: staging
-      TF_VAR_ons_access_ips: {{ons_access_ips}}
-      TF_VAR_certificate_arn: {{certificate_arn}}
+      TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
+      TF_VAR_certificate_arn: {{staging_certificate_arn}}
       TF_VAR_slack_webhook_path: {{slack_webhook_path}}
       TF_VAR_survey_runner_docker_registry: {{docker_registry}}
       TF_VAR_survey_launcher_registry: {{docker_registry}}
