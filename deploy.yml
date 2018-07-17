@@ -126,17 +126,17 @@ jobs:
     params:
       include_source_tarball: true
   - get: eq-terraform-dynamodb-release
-    version: { tag: 'v1.2' }
+    version: { tag: 'v1.3' }
     trigger: true
     params:
       include_source_tarball: true
   - get: eq-terraform-ecs-release
-    version: { tag: 'v3.2' }
+    version: { tag: 'v3.3' }
     trigger: true
     params:
       include_source_tarball: true
   - get: eq-ecs-deploy-release
-    version: { tag: 'v1.5.0' }
+    version: { tag: 'v1.5.1' }
     trigger: true
     params:
       include_source_tarball: true
@@ -374,8 +374,7 @@ jobs:
       TF_VAR_env: 'preprod'
       TF_VAR_aws_access_key: '((preprod_aws_access_key))'
       TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
-      TF_VAR_submitted_responses_read_capacity: 10
-      TF_VAR_submitted_responses_write_capacity: 10
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
       platform: linux
       image_resource:
@@ -494,7 +493,7 @@ jobs:
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-runner""
           terraform apply \
           -var container_tag=$release_version \
-          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((preprod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((preprod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((preprod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((preprod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((preprod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((preprod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"preprod-submitted-responses\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"False\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"PreProd - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
+          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((preprod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((preprod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((preprod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((preprod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((preprod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((preprod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"preprod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"preprod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"preprod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"preprod-used-jti-claim\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"False\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"PreProd - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
           -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((preprod_submitted_responses_table_arn))\"}]}"'
   - task: Deploy EQ Survey Runner Static
     params:
@@ -799,8 +798,7 @@ jobs:
       TF_VAR_env: 'prod'
       TF_VAR_aws_access_key: '((prod_aws_access_key))'
       TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
-      TF_VAR_submitted_responses_read_capacity: 10
-      TF_VAR_submitted_responses_write_capacity: 10
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
     config:
       platform: linux
       image_resource:
@@ -887,6 +885,7 @@ jobs:
       TF_VAR_aws_alb_listener_arn: {{prod_aws_alb_listener_arn}}
       TF_VAR_service_name: 'surveys'
       TF_VAR_container_name: 'eq-survey-runner'
+      TF_VAR_container_memory_reservation: 512
       TF_VAR_application_min_tasks: '3'
       TF_VAR_container_port: 5000
       TF_VAR_listener_rule_priority: 10
@@ -921,7 +920,7 @@ jobs:
           terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="ecs-survey-runner""
           terraform plan \
           -var container_tag=$release_version \
-          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((prod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((prod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((prod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((prod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((prod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"prod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"prod-submitted-responses\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"True\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"Prod - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
+          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((prod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((prod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((prod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((prod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((prod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"prod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"prod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"prod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"prod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"prod-used-jti-claim\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"True\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"Prod - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
           -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((prod_submitted_responses_table_arn))\"}]}"'
   - task: Deploy EQ Survey Runner Static
     params:
@@ -1204,8 +1203,7 @@ jobs:
       TF_VAR_env: 'prod'
       TF_VAR_aws_access_key: '((prod_aws_access_key))'
       TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
-      TF_VAR_submitted_responses_read_capacity: 10
-      TF_VAR_submitted_responses_write_capacity: 10
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
     config:
       platform: linux
       image_resource:
@@ -1292,6 +1290,7 @@ jobs:
       TF_VAR_aws_alb_listener_arn: {{prod_aws_alb_listener_arn}}
       TF_VAR_service_name: 'surveys'
       TF_VAR_container_name: 'eq-survey-runner'
+      TF_VAR_container_memory_reservation: 512
       TF_VAR_application_min_tasks: '3'
       TF_VAR_container_port: 5000
       TF_VAR_listener_rule_priority: 10
@@ -1326,7 +1325,7 @@ jobs:
           terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="ecs-survey-runner""
           terraform apply \
           -var container_tag=$release_version \
-          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((prod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((prod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((prod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((prod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((prod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"prod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"prod-submitted-responses\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"False\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"Prod - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
+          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((prod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((prod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((prod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((prod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((prod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"prod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"prod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"prod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"prod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"prod-used-jti-claim\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"False\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"Prod - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
           -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((prod_submitted_responses_table_arn))\"}]}"'
   - task: Deploy EQ Survey Runner Static
     params:
