@@ -72,6 +72,12 @@ resources:
     uri: https://github.com/ONSdigital/eq-smoke-tests.git
     branch: master
 
+- name: eq-address-lookup-api
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-address-lookup-api.git
+    branch: master
+
 - name: survey-runner-image
   type: docker-image
   source:
@@ -125,6 +131,13 @@ resources:
   type: docker-image
   source:
     repository: ((docker_registry))/eq-schema-validator
+    aws_access_key_id: ((dev_aws_access_key))
+    aws_secret_access_key: ((dev_aws_secret_key))
+
+- name: eq-address-lookup-api-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-address-lookup-api
     aws_access_key_id: ((dev_aws_access_key))
     aws_secret_access_key: ((dev_aws_secret_key))
 
@@ -411,6 +424,17 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-eq-address-lookup-api
+  plan:
+  - get: eq-address-lookup-api
+    trigger: true
+  - put: eq-address-lookup-api-image
+    params:
+      build: eq-address-lookup-api
+      tag: eq-address-lookup-api/.git/HEAD
+    get_params:
+      skip_download: true
+
 - name: staging-deploy
   serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
   plan:
@@ -436,6 +460,9 @@ jobs:
     trigger: true
   - get: eq-schema-validator
     passed: [build-eq-schema-validator]
+    trigger: true
+  - get: eq-address-lookup-api
+    passed: [build-eq-address-lookup-api]
     trigger: true
   - get: eq-terraform
     trigger: true
@@ -650,6 +677,9 @@ jobs:
     - get: eq-survey-register
       passed: [staging-deploy]
       trigger: true
+    - get: eq-address-lookup-api
+      passed: [staging-deploy]
+      trigger: true
     - get: eq-terraform
       passed: [staging-deploy]
       trigger: true
@@ -750,6 +780,9 @@ jobs:
     passed: [smoke-tests]
     trigger: true
   - get: eq-survey-register
+    passed: [smoke-tests]
+    trigger: true
+  - get: eq-address-lookup-api
     passed: [smoke-tests]
     trigger: true
   - get: eq-ecs-deploy
@@ -1001,6 +1034,48 @@ jobs:
           -var container_tag=$publisher_tag \
           -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital/validate\" }"'
 
+  - task: Deploy Address Lookup API
+    params:
+      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
+      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
+      TF_VAR_env: 'preprod'
+      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
+      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'preprod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'address-lookup-api'
+      TF_VAR_container_name: 'eq-address-lookup-api'
+      TF_VAR_container_port: 6030
+      TF_VAR_listener_rule_priority: 105
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-address-lookup-api
+      - name: eq-ecs-deploy
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy
+          tfenv install
+
+          address_lookup_api_tag=$(cat ../eq-address-lookup-api/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-address-lookup-api""
+          terraform apply \
+          -var container_tag=$address_lookup_api_tag \
+          -var 'container_environment_variables="{ \"name\": \"LOOKUP_URL\", \"value\": \"((preprod_address_lookup_url))\" },{ \"name\": \"AUTH_KEY\", \"value\": \"((preprod_address_lookup_auth_token))\" }"'
+
   - task: Wait for Deployed Author API
     timeout: 10m
     config:
@@ -1079,14 +1154,6 @@ jobs:
             color: danger
             title: Concourse Build $BUILD_ID
             title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
-  - put: slack-alert
-    params:
-      channel: '#eq-runner'
-      attachments:
-        - pretext: PreProd deployment successful
-          color: good
-          title: Concourse Build $BUILD_ID
-          title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
   - put: slack-alert
     params:
       channel: '#eq-author'
