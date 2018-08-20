@@ -162,6 +162,7 @@ resources:
 
 jobs:
 - name: build-eq-survey-runner
+  public: true
   plan:
   - get: eq-survey-runner
     trigger: true
@@ -202,6 +203,7 @@ jobs:
       skip_download: true
 
 - name: build-eq-author
+  public: true
   plan:
   - get: eq-author
     trigger: true
@@ -235,6 +237,7 @@ jobs:
       skip_download: true
 
 - name: build-eq-author-api
+  public: true
   plan:
   - get: eq-author-api
     trigger: true
@@ -268,6 +271,7 @@ jobs:
       skip_download: true
 
 - name: build-eq-publisher
+  public: true
   plan:
   - get: eq-publisher
     trigger: true
@@ -301,6 +305,7 @@ jobs:
       skip_download: true
 
 - name: build-go-launch-a-survey
+  public: true
   plan:
   - get: go-launch-a-survey
     trigger: true
@@ -345,6 +350,7 @@ jobs:
       skip_download: true
 
 - name: build-eq-survey-register
+  public: true
   plan:
   - get: eq-survey-register
     trigger: true
@@ -389,6 +395,7 @@ jobs:
       skip_download: true
 
 - name: build-eq-schema-validator
+  public: true
   plan:
   - get: eq-schema-validator
     trigger: true
@@ -425,6 +432,7 @@ jobs:
       skip_download: true
 
 - name: build-eq-address-lookup-api
+  public: true
   plan:
   - get: eq-address-lookup-api
     trigger: true
@@ -436,6 +444,7 @@ jobs:
       skip_download: true
 
 - name: staging-deploy
+  public: true
   serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
   plan:
   - get: morning-trigger
@@ -651,6 +660,7 @@ jobs:
             title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
 
 - name: smoke-tests
+  public: true
   serial_groups: [staging-smoke-tests]
   plan:
   - aggregate:
@@ -714,6 +724,7 @@ jobs:
             title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
 
 - name: staging-destroy
+  public: true
   serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
   plan:
   - get: evening-trigger
@@ -760,7 +771,9 @@ jobs:
           terraform init -backend-config="key="staging""
           echo "eu-west-1" | terraform destroy -force
 
+
 - name: pre-prod-deploy
+  public: true
   max_in_flight: 1
   serial_groups: [pre-prod-deploy, pre-prod-smoke-tests]
   plan:
@@ -828,6 +841,8 @@ jobs:
           -var container_tag=$survey_launcher_tag \
           -var 'container_environment_variables="{\"name\": \"JWT_ENCRYPTION_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-encryption-sr-public-key.pem\"},{\"name\": \"JWT_SIGNING_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-signing-rrm-private-key.pem\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets\"},{\"name\": \"SURVEY_RUNNER_URL\",\"value\": \"https://preprod-new-surveys.eq.ons.digital\"}"' \
           -var 'task_iam_policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Action\":[\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::preprod-secrets*\"}]}"'
+
+
   - task: Deploy Schema Validator
     params:
       AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))

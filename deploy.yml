@@ -64,6 +64,7 @@ resources:
 
 jobs:
 - name: build-eq-survey-runner
+  public: true
   plan:
   - get: eq-survey-runner-release
     params:
@@ -113,6 +114,7 @@ jobs:
       skip_download: true
 
 - name: PreProd-Deploy
+  public: true
   max_in_flight: 1
   plan:
   - get: eq-survey-runner-release
