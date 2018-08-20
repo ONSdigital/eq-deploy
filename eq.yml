@@ -820,6 +820,7 @@ jobs:
       TF_VAR_container_name: 'go-launch-a-survey'
       TF_VAR_container_port: 8000
       TF_VAR_listener_rule_priority: 101
+      TF_VAR_healthcheck_path: '/status'
       TF_VAR_task_has_iam_policy: true
       TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
