@@ -78,68 +78,61 @@ resources:
     uri: https://github.com/ONSdigital/eq-address-lookup-api.git
     branch: master
 
+- name: eq-lookup-api
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-lookup-api.git
+    branch: master
+
 - name: survey-runner-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-survey-runner
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: survey-runner-static-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-survey-runner-static
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: eq-author-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-author
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: eq-author-api-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-author-api
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: eq-publisher-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-publisher
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: go-launch-a-survey-image
   type: docker-image
   source:
     repository: ((docker_registry))/go-launch-a-survey
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: eq-survey-register-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-survey-register
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: eq-schema-validator-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-schema-validator
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: eq-address-lookup-api-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-address-lookup-api
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
+
+- name: eq-lookup-api-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-lookup-api
 
 - name: slack-alert
   type: slack-notification
@@ -443,6 +436,18 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-eq-lookup-api
+  public: true
+  plan:
+  - get: eq-lookup-api
+    trigger: true
+  - put: eq-lookup-api-image
+    params:
+      build: eq-lookup-api
+      tag: eq-lookup-api/.git/HEAD
+    get_params:
+      skip_download: true
+
 - name: staging-deploy
   public: true
   serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
@@ -473,6 +478,9 @@ jobs:
   - get: eq-address-lookup-api
     passed: [build-eq-address-lookup-api]
     trigger: true
+  - get: eq-lookup-api
+    passed: [build-eq-lookup-api]
+    trigger: true
   - get: eq-terraform
     trigger: true
   - get: eq-terraform-ecs
@@ -481,12 +489,10 @@ jobs:
     trigger: true
   - task: Deploy Terraform
     params:
-      AWS_ACCESS_KEY_ID: ((dev_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((dev_aws_secret_key))
       ANSIBLE_HOST_KEY_CHECKING: False
       TF_VAR_env: 'staging'
-      TF_VAR_aws_access_key: '((dev_aws_access_key))'
-      TF_VAR_aws_secret_key: '((dev_aws_secret_key))'
+      TF_VAR_aws_account_id: '((dev_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
       TF_VAR_aws_key_pair: staging
       TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
       TF_VAR_certificate_arn: {{staging_certificate_arn}}
@@ -516,6 +522,7 @@ jobs:
       - name: eq-publisher
       - name: go-launch-a-survey
       - name: eq-schema-validator
+      - name: eq-lookup-api
       run:
         path: bash
         args:
@@ -535,8 +542,9 @@ jobs:
           eq_publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
           go_launch_a_survey_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
           eq_schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
+          eq_lookup_api_tag=$(cat ../eq-lookup-api/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="key="staging""
+          terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
           echo "eu-west-1" | terraform apply \
             -var survey_runner_tag=$survey_runner_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
@@ -544,7 +552,8 @@ jobs:
             -var author_api_tag=$eq_author_api_tag \
             -var publisher_tag=$eq_publisher_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
-            -var schema_validator_tag=$eq_schema_validator_tag
+            -var schema_validator_tag=$eq_schema_validator_tag \
+            -var suggest_api_tag=$eq_lookup_api_tag
     on_failure:
       put: slack-alert
       params:
@@ -733,11 +742,9 @@ jobs:
     passed: [staging-deploy]
   - task: Destroy Terraform
     params:
-      AWS_ACCESS_KEY_ID: ((dev_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((dev_aws_secret_key))
       TF_VAR_env: 'staging'
-      TF_VAR_aws_access_key: '((dev_aws_access_key))'
-      TF_VAR_aws_secret_key: '((dev_aws_secret_key))'
+      TF_VAR_aws_account_id: '((dev_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
       TF_VAR_aws_key_pair: staging
       TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
       TF_VAR_certificate_arn: {{staging_certificate_arn}}
@@ -768,7 +775,7 @@ jobs:
 
           echo -e "" > staging.pem
 
-          terraform init -backend-config="key="staging""
+          terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
           echo "eu-west-1" | terraform destroy -force
 
 
@@ -801,11 +808,9 @@ jobs:
   - get: eq-ecs-deploy
   - task: Deploy Survey Launcher
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod-new'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -815,6 +820,7 @@ jobs:
       TF_VAR_container_name: 'go-launch-a-survey'
       TF_VAR_container_port: 8000
       TF_VAR_listener_rule_priority: 101
+      TF_VAR_healthcheck_path: '/status'
       TF_VAR_task_has_iam_policy: true
       TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
@@ -836,7 +842,7 @@ jobs:
 
           survey_launcher_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-launcher""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-launcher"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$survey_launcher_tag \
           -var 'container_environment_variables="{\"name\": \"JWT_ENCRYPTION_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-encryption-sr-public-key.pem\"},{\"name\": \"JWT_SIGNING_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-signing-rrm-private-key.pem\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets\"},{\"name\": \"SURVEY_RUNNER_URL\",\"value\": \"https://preprod-new-surveys.eq.ons.digital\"}"' \
@@ -845,11 +851,9 @@ jobs:
 
   - task: Deploy Schema Validator
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -880,16 +884,14 @@ jobs:
 
           schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-schema-validator""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-schema-validator"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$schema_validator_tag
   - task: Deploy Survey Register
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -919,16 +921,14 @@ jobs:
 
           survey_register_tag=$(cat ../eq-survey-register/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-survey-register""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-survey-register"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$survey_register_tag
   - task: Deploy Author
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -961,18 +961,16 @@ jobs:
 
           author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$author_tag \
           -var 'container_environment_variables="{\"name\": \"REACT_APP_BASE_NAME\", \"value\": \"/eq-author\" },{ \"name\": \"REACT_APP_USE_MOCK_API\", \"value\": \"false\" },{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish\" },{ \"name\": \"REACT_APP_GO_LAUNCH_A_SURVEY_URL\", \"value\": \"https://preprod-new-surveys-launch.eq.ons.digital/quick-launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_ENABLE_AUTH\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" },{ \"name\": \"REACT_APP_FIREBASE_MESSAGING_SENDER_ID\", \"value\": \"((preprod_author_firebase_messaging_sender_id))\" }"'
           
   - task: Deploy Author-Api
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -1003,17 +1001,15 @@ jobs:
 
           author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-api""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-api"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$author_api_tag \
           -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}"'
   - task: Deploy Publisher
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -1044,18 +1040,16 @@ jobs:
 
           publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-publisher""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-publisher"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$publisher_tag \
           -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital/validate\" }"'
 
   - task: Deploy Address Lookup API
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -1086,7 +1080,7 @@ jobs:
 
           address_lookup_api_tag=$(cat ../eq-address-lookup-api/.git/HEAD | xargs echo -n)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-address-lookup-api""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-address-lookup-api"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$address_lookup_api_tag \
           -var 'container_environment_variables="{ \"name\": \"LOOKUP_URL\", \"value\": \"((preprod_address_lookup_url))\" },{ \"name\": \"AUTH_KEY\", \"value\": \"((preprod_address_lookup_auth_token))\" }"'

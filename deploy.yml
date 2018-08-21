@@ -47,15 +47,11 @@ resources:
   type: docker-image
   source:
     repository: ((docker_registry))/eq-survey-runner
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: survey-runner-static-image
   type: docker-image
   source:
     repository: ((docker_registry))/eq-survey-runner-static
-    aws_access_key_id: ((dev_aws_access_key))
-    aws_secret_access_key: ((dev_aws_secret_key))
 
 - name: slack-alert
   type: slack-notification
@@ -123,32 +119,30 @@ jobs:
       include_source_tarball: true
     trigger: true
   - get: eq-terraform-release
-    version: { tag: '17.0.2' }
+    version: { tag: '19.0.0' }
     trigger: true
     params:
       include_source_tarball: true
   - get: eq-terraform-dynamodb-release
-    version: { tag: 'v1.3' }
+    version: { tag: 'v2.0' }
     trigger: true
     params:
       include_source_tarball: true
   - get: eq-terraform-ecs-release
-    version: { tag: 'v3.3' }
+    version: { tag: 'v4.0' }
     trigger: true
     params:
       include_source_tarball: true
   - get: eq-ecs-deploy-release
-    version: { tag: 'v1.5.1' }
+    version: { tag: 'v2.0' }
     trigger: true
     params:
       include_source_tarball: true
   - task: Deploy EQ VPC
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_cidr_block: '10.30.21.0/24'
       TF_VAR_database_cidrs: ["10.30.21.96/28", "10.30.21.112/28", "10.30.21.128/28"]
     config:
@@ -172,15 +166,13 @@ jobs:
           cd eq-terraform/survey-runner-vpc
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-vpc"
+          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-vpc" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Routing
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_internet_gateway_id: '((preprod_internet_gateway_id))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_vpc_peer_connection_id: '((preprod_vpc_peer_connection_id))'
@@ -209,15 +201,13 @@ jobs:
           cd eq-terraform/survey-runner-routing
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-routing"
+          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-routing" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ ECS
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_application_cidrs: ["10.30.21.192/28","10.30.21.208/28","10.30.21.224/28"]
       TF_VAR_vpc_peer_cidr_block: ["10.30.26.0/24"]
@@ -247,15 +237,13 @@ jobs:
           cd eq-terraform-ecs
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=eq-terraform-ecs"
+          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=eq-terraform-ecs" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Alerting
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_slack_webhook_path: '((slack_webhook_path))'
       TF_VAR_slack_channel: 'ops-preprod'
     config:
@@ -279,15 +267,13 @@ jobs:
           cd eq-terraform/survey-runner-alerting
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-alerting"
+          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-alerting" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Survey Runner Database
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_application_cidrs: ["10.30.21.48/28","10.30.21.64/28","10.30.21.80/28","10.30.21.192/28","10.30.21.208/28","10.30.21.224/28"]
       TF_VAR_database_name: '((preprod_database_name))'
@@ -323,15 +309,13 @@ jobs:
           cd eq-terraform/survey-runner-database
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-database"
+          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-database" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Author Database
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_application_cidrs: ["10.30.21.192/28","10.30.21.208/28","10.30.21.224/28"]
       TF_VAR_database_name: '((preprod_author_database_name))'
@@ -367,15 +351,13 @@ jobs:
           cd eq-terraform/survey-runner-database
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-database"
+          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-database" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Survey Runner DynamoDB
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
       platform: linux
@@ -398,15 +380,13 @@ jobs:
           cd eq-terraform-dynamodb
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=eq-survey-runner-dynamodb"
+          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=eq-survey-runner-dynamodb" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Survey Runner Queue
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_internet_gateway_id: '((preprod_internet_gateway_id))'
       TF_VAR_queue_cidrs: ["10.30.21.0/27"]
@@ -446,16 +426,14 @@ jobs:
           cd eq-terraform/survey-runner-queue
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-queue"
+          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-queue" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
 #          terraform plan
 
   - task: Deploy EQ Survey Runner
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod-new'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -492,18 +470,16 @@ jobs:
 
           release_version=$(cat ../../eq-survey-runner-release/tag)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-runner""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-runner"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$release_version \
           -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((preprod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((preprod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((preprod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((preprod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((preprod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((preprod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"preprod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"preprod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"preprod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"preprod-used-jti-claim\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"False\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"PreProd - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
           -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((preprod_submitted_responses_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_questionnaire_state_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_eq_session_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\"],\"Resource\": \"((preprod_used_jti_claim_table_arn))\"}]}"'
   - task: Deploy EQ Survey Runner Static
     params:
-      AWS_ACCESS_KEY_ID: ((preprod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((preprod_aws_secret_key))
       TF_VAR_env: 'preprod-new'
-      TF_VAR_aws_access_key: '((preprod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((preprod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -540,7 +516,7 @@ jobs:
 
           release_version=$(cat ../../eq-survey-runner-release/tag)
 
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-runner-static""
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-runner-static"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$release_version
 
@@ -612,11 +588,9 @@ jobs:
       include_source_tarball: true
   - task: Deploy EQ VPC
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_cidr_block: '10.30.20.0/24'
       TF_VAR_database_cidrs: ["10.30.20.96/28", "10.30.20.112/28", "10.30.20.128/28"]
     config:
@@ -640,15 +614,13 @@ jobs:
           cd eq-terraform/survey-runner-vpc
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-vpc"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-vpc" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform plan
   - task: Deploy EQ Routing
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_internet_gateway_id: '((prod_internet_gateway_id))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_vpc_peer_connection_id: '((prod_vpc_peer_connection_id))'
@@ -677,15 +649,13 @@ jobs:
           cd eq-terraform/survey-runner-routing
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-routing"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-routing" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform plan
   - task: Deploy EQ ECS
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_ecs_application_cidrs: ["10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
       TF_VAR_vpc_peer_cidr_block: ["10.30.27.0/24"]
@@ -715,15 +685,13 @@ jobs:
           cd eq-terraform-ecs
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=eq-terraform-ecs"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=eq-terraform-ecs" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform plan
   - task: Deploy EQ Alerting
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_slack_webhook_path: '((slack_webhook_path))'
       TF_VAR_slack_channel: 'ops'
     config:
@@ -747,15 +715,13 @@ jobs:
           cd eq-terraform/survey-runner-alerting
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-alerting"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-alerting" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform plan
   - task: Deploy EQ Survey Runner Database
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_application_cidrs: ["10.30.20.48/28","10.30.20.64/28","10.30.20.80/28","10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
       TF_VAR_database_name: '((prod_database_name))'
@@ -791,15 +757,13 @@ jobs:
           cd eq-terraform/survey-runner-database
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-database"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-database" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform plan
   - task: Deploy EQ Survey Runner DynamoDB
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
     config:
       platform: linux
@@ -822,15 +786,13 @@ jobs:
           cd eq-terraform-dynamodb
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-dynamodb"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform plan
   - task: Deploy EQ Survey Runner Queue
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_internet_gateway_id: '((prod_internet_gateway_id))'
       TF_VAR_queue_cidrs: ["10.30.20.0/27"]
@@ -870,16 +832,14 @@ jobs:
           cd eq-terraform/survey-runner-queue
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-queue"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-queue" -backend-config="role_arn="((prod_aws_assume_role_arn))""
 #          terraform plan
 
   - task: Deploy EQ Survey Runner
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'prod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -919,18 +879,16 @@ jobs:
 
           release_version=$(cat ../../eq-survey-runner-release/tag)
 
-          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="ecs-survey-runner""
+          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="ecs-survey-runner"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform plan \
           -var container_tag=$release_version \
           -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((prod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((prod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((prod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((prod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((prod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"prod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"prod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"prod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"prod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"prod-used-jti-claim\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_WRITE\",\"value\": \"False\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"True\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"Prod - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
           -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((prod_submitted_responses_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((prod_questionnaire_state_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((prod_eq_session_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\"],\"Resource\": \"((prod_used_jti_claim_table_arn))\"}]}"'
   - task: Deploy EQ Survey Runner Static
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'prod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -969,7 +927,7 @@ jobs:
 
           release_version=$(cat ../../eq-survey-runner-release/tag)
 
-          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="preprod-ecs-survey-runner-static""
+          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="preprod-ecs-survey-runner-static"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform plan \
           -var container_tag=$release_version
 
@@ -1017,11 +975,9 @@ jobs:
       include_source_tarball: true
   - task: Deploy EQ VPC
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_cidr_block: '10.30.20.0/24'
       TF_VAR_database_cidrs: ["10.30.20.96/28", "10.30.20.112/28", "10.30.20.128/28"]
     config:
@@ -1045,15 +1001,13 @@ jobs:
           cd eq-terraform/survey-runner-vpc
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-vpc"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-vpc" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Routing
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_internet_gateway_id: '((prod_internet_gateway_id))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_vpc_peer_connection_id: '((prod_vpc_peer_connection_id))'
@@ -1082,15 +1036,13 @@ jobs:
           cd eq-terraform/survey-runner-routing
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-routing"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-routing" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ ECS
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_ecs_application_cidrs: ["10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
       TF_VAR_vpc_peer_cidr_block: ["10.30.27.0/24"]
@@ -1120,15 +1072,13 @@ jobs:
           cd eq-terraform-ecs
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=eq-terraform-ecs"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=eq-terraform-ecs" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Alerting
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_slack_webhook_path: '((slack_webhook_path))'
       TF_VAR_slack_channel: 'ops'
     config:
@@ -1152,15 +1102,13 @@ jobs:
           cd eq-terraform/survey-runner-alerting
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-alerting"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-alerting" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Survey Runner Database
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_application_cidrs: ["10.30.20.48/28","10.30.20.64/28","10.30.20.80/28","10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
       TF_VAR_database_name: '((prod_database_name))'
@@ -1196,15 +1144,13 @@ jobs:
           cd eq-terraform/survey-runner-database
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-database"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-database" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Survey Runner DynamoDB
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
     config:
       platform: linux
@@ -1227,15 +1173,13 @@ jobs:
           cd eq-terraform-dynamodb
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-dynamodb"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform apply
   - task: Deploy EQ Survey Runner Queue
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_internet_gateway_id: '((prod_internet_gateway_id))'
       TF_VAR_queue_cidrs: ["10.30.20.0/27"]
@@ -1275,16 +1219,14 @@ jobs:
           cd eq-terraform/survey-runner-queue
           tfenv install
 
-          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-queue"
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-queue" -backend-config="role_arn="((prod_aws_assume_role_arn))""
 #          terraform plan
 
   - task: Deploy EQ Survey Runner
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'prod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -1324,18 +1266,16 @@ jobs:
 
           release_version=$(cat ../../eq-survey-runner-release/tag)
 
-          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="ecs-survey-runner""
+          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="ecs-survey-runner"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$release_version \
-          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((prod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((prod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((prod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((prod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((prod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"prod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"prod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"prod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"prod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"prod-used-jti-claim\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_WRITE\",\"value\": \"False\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"False\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"Prod - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
+          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((prod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((prod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((prod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((prod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((prod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"prod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"prod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"prod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"prod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"prod-used-jti-claim\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_WRITE\",\"value\": \"False\"}"' \
           -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((prod_submitted_responses_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((prod_questionnaire_state_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((prod_eq_session_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\"],\"Resource\": \"((prod_used_jti_claim_table_arn))\"}]}"'
   - task: Deploy EQ Survey Runner Static
     params:
-      AWS_ACCESS_KEY_ID: ((prod_aws_access_key))
-      AWS_SECRET_ACCESS_KEY: ((prod_aws_secret_key))
       TF_VAR_env: 'prod'
-      TF_VAR_aws_access_key: '((prod_aws_access_key))'
-      TF_VAR_aws_secret_key: '((prod_aws_secret_key))'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'prod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
@@ -1374,7 +1314,7 @@ jobs:
 
           release_version=$(cat ../../eq-survey-runner-release/tag)
 
-          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="preprod-ecs-survey-runner-static""
+          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="preprod-ecs-survey-runner-static"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$release_version
 
