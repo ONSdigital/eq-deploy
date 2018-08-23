@@ -94,7 +94,7 @@ resources:
     release: true
     pre_release: true
 
-- name: eq-survey-launcher-release
+- name: go-launch-a-survey-release
   type: github-release
   source:
     owner: ONSdigital
@@ -123,10 +123,10 @@ resources:
   source:
     repository: ((docker_registry))/eq-schema-validator
 
-- name: survey-launcher-image
+- name: go-launch-a-survey-image
   type: docker-image
   source:
-    repository: ((docker_registry))/eq-survey-launcher
+    repository: ((docker_registry))/go-launch-a-survey
 
 jobs:
 - name: build-eq-survey-runner
@@ -351,6 +351,51 @@ jobs:
     params:
       build: compiled-eq-schema-validator
       tag: eq-schema-validator-release/tag
+    get_params:
+      skip_download: true
+
+- name: build-go-launch-a-survey
+  public: true
+  plan:
+  - get: go-launch-a-survey-release
+    params:
+      include_source_tarball: true
+    trigger: true
+  - task: Build Image
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source: onsdigital/eq-golang-build
+      inputs:
+      - name: go-launch-a-survey-release
+      outputs:
+      - name: compiled-go-launch-a-survey
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          service docker start
+
+          build_dir=$(pwd)
+          export GOPATH=$HOME/gopath
+          export PATH=$HOME/gopath/bin:$PATH
+          mkdir -p $HOME/gopath/src/github.com/ONSdigital/go-launch-a-survey
+          cp -R go-launch-a-survey-release/ $HOME/gopath/src/github.com/ONSdigital/
+          cd $HOME/gopath/src/github.com/ONSdigital/go-launch-a-survey
+
+          go get -u github.com/golang/dep/cmd/dep
+          dep ensure
+          docker run --rm -v $(pwd):/src centurylink/golang-builder
+
+          service docker stop
+
+          cp -R . $build_dir/go-launch-a-survey-compiled
+  - put: go-launch-a-survey-image
+    params:
+      build: compiled-go-launch-a-survey
+      tag: go-launch-a-survey-release/tag
     get_params:
       skip_download: true
 
