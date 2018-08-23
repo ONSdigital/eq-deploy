@@ -267,6 +267,50 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-eq-publisher
+  public: true
+  plan:
+  - get: eq-publisher-release
+    params:
+      include_source_tarball: true
+    trigger: true
+  - task: Build Image
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source: onsdigital/eq-author-build
+      inputs:
+      - name: eq-publisher-release
+      outputs:
+      - name: compiled-eq-publisher
+      - name: build_args
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-publisher-release
+
+          mkdir eq-publisher
+          tar -xzf source.tar.gz -C eq-publisher --strip-components=1
+
+          cd eq-publisher
+          yarn install
+
+          cp -R ../eq-publisher/* ../../compiled-eq-publisher
+
+          eq_publisher_tag=$(cat ../tag)
+          echo "{\"APPLICATION_VERSION\":\""$eq_publisher_tag"\"}" > ../../build_args/args
+          cp ../tag ../../compiled-eq-publisher/.application-version
+  - put: publisher-image
+    params:
+      build: compiled-eq-publisher
+      tag: eq-publisher-release/tag
+      build_args_file: build_args/args
+    get_params:
+      skip_download: true
+
 - name: PreProd-Deploy
   public: true
   max_in_flight: 1
