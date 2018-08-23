@@ -58,6 +58,51 @@ resources:
   source:
     url: {{slack_webhook_url}}
 
+- name: eq-author-release
+  type: github-release
+  source:
+    owner: ONSdigital
+    repository: eq-author
+    access_token: ((github_access_token))
+    release: true
+    pre_release: true
+
+- name: eq-author-api-release
+  type: github-release
+  source:
+    owner: ONSdigital
+    repository: eq-author-api
+    access_token: ((github_access_token))
+    release: true
+    pre_release: true
+
+- name: eq-publisher-release
+  type: github-release
+  source:
+    owner: ONSdigital
+    repository: eq-publisher
+    access_token: ((github_access_token))
+    release: true
+    pre_release: true
+
+- name: eq-schema-validator-release
+  type: github-release
+  source:
+    owner: ONSdigital
+    repository: eq-schema-validator
+    access_token: ((github_access_token))
+    release: true
+    pre_release: true
+
+- name: eq-survey-launcher-release
+  type: github-release
+  source:
+    owner: ONSdigital
+    repository: go-launch-a-survey
+    access_token: ((github_access_token))
+    release: true
+    pre_release: true
+
 jobs:
 - name: build-eq-survey-runner
   public: true
@@ -108,6 +153,50 @@ jobs:
       tag: eq-survey-runner-release/tag
     get_params:
       skip_download: true
+
+- name: build-eq-author
+  public: true
+  plan:
+    - get: eq-author-release
+      params:
+        include_source_tarball: true
+      trigger: true
+    - task: Build Image
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source: onsdigital/eq-author-build
+        inputs:
+          - name: eq-author-release
+        outputs:
+          - name: compiled-eq-author
+          - name: build_args
+        run:
+          path: sh
+          args:
+            - -exc
+            - |
+              cd eq-author-release
+
+              mkdir eq-author
+              tar -xzf source.tar.gz -C eq-author --strip-components=1
+
+              cd eq-author
+              yarn install
+
+              cp -R ../eq-author/* ../../compiled-eq-author
+
+              eq_author_tag=$(cat ../tag)
+              echo "{\"APPLICATION_VERSION\":\""$eq_author_tag"\"}" > ../../build_args/args
+              cp ../tag ../../compiled-eq-author/.application-version
+    - put: author-image
+        params:
+          build: compiled-eq-author
+          tag: eq-author-release/tag
+          build_args_file: build_args/args
+        get_params:
+          skip_download: true
 
 - name: PreProd-Deploy
   public: true
