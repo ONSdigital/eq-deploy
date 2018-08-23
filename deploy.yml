@@ -311,6 +311,49 @@ jobs:
     get_params:
       skip_download: true
 
+- name: build-eq-schema-validator
+  public: true
+  plan:
+  - get: eq-schema-validator-release
+    params:
+      include_source_tarball: true
+    trigger: true
+  - task: Build Image
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source: onsdigital/eq-python-build
+      inputs:
+      - name: eq-schema-validator-release
+      outputs:
+      - name: compiled-eq-schema-validator
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-schema-validator-release
+
+          mkdir eq-schema-validator
+          tar -xzf source.tar.gz -C eq-schema-validator --strip-components=1
+
+          pyenv install 3.6.3
+
+          cd eq-schema-validator
+          pip install -U pip pipenv
+          pipenv install --dev --deploy
+          pipenv run ./scripts/build.sh
+
+          cp -R ../eq-schema-validator/* ../../compiled-eq-schema-validator
+          cp ../tag ../../compiled-eq-schema-validator/.application-version
+  - put: schema-validator-image
+    params:
+      build: compiled-eq-schema-validator
+      tag: eq-schema-validator-release/tag
+    get_params:
+      skip_download: true
+
 - name: PreProd-Deploy
   public: true
   max_in_flight: 1
