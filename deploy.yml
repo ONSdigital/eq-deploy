@@ -2027,6 +2027,633 @@ jobs:
           title: Concourse Build $BUILD_ID
           title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
 
+- name: Author-Prod-Deployment-Plan
+  max_in_flight: 1
+  plan:
+  - get: eq-survey-runner-release
+    passed: [Author-PreProd-Deploy]
+    params:
+      include_source_tarball: true
+    trigger: true
+  - get: eq-author-release
+    passed: [Author-PreProd-Deploy]
+    params:
+      include_source_tarball: true
+    trigger: true
+  - get: eq-author-api-release
+    passed: [Author-PreProd-Deploy]
+    params:
+      include_source_tarball: true
+    trigger: true
+  - get: eq-publisher-release
+    passed: [Author-PreProd-Deploy]
+    params:
+      include_source_tarball: true
+    trigger: true
+  - get: go-launch-a-survey-release
+    passed: [Author-PreProd-Deploy]
+    params:
+      include_source_tarball: true
+    trigger: true
+  - get: eq-schema-validator-release
+    passed: [Author-PreProd-Deploy]
+    params:
+      include_source_tarball: true
+    trigger: true
+  - get: eq-terraform-release
+    passed: [Author-PreProd-Deploy]
+    trigger: true
+    params:
+      include_source_tarball: true
+  - get: eq-terraform-dynamodb-release
+    passed: [Author-PreProd-Deploy]
+    trigger: true
+    params:
+      include_source_tarball: true
+  - get: eq-terraform-ecs-release
+    passed: [Author-PreProd-Deploy]
+    trigger: true
+    params:
+      include_source_tarball: true
+  - get: eq-ecs-deploy-release
+    passed: [Author-PreProd-Deploy]
+    trigger: true
+    params:
+      include_source_tarball: true
+  - task: Deploy EQ VPC
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_cidr_block: '10.30.20.0/24'
+      TF_VAR_database_cidrs: ["10.30.20.96/28", "10.30.20.112/28", "10.30.20.128/28"]
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-terraform-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-terraform-release
+
+          mkdir eq-terraform
+          tar -xzf source.tar.gz -C eq-terraform --strip-components=1
+
+          cd eq-terraform/survey-runner-vpc
+          tfenv install
+
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-vpc" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan
+
+  - task: Deploy EQ Routing
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_internet_gateway_id: '((prod_internet_gateway_id))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_vpc_peer_connection_id: '((prod_vpc_peer_connection_id))'
+      TF_VAR_vpc_peer_cidr_block: '10.30.27.0/24'
+      TF_VAR_public_cidrs: ["10.30.20.144/28","10.30.20.160/28","10.30.20.176/28"]
+      TF_VAR_database_subnet_ids: ((prod_database_subnet_ids))
+      TF_VAR_database_cidrs: ["10.30.20.96/28", "10.30.20.112/28", "10.30.20.128/28"]
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-terraform-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-terraform-release
+
+          mkdir eq-terraform
+          tar -xzf source.tar.gz -C eq-terraform --strip-components=1
+
+          cd eq-terraform/survey-runner-routing
+          tfenv install
+
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-routing" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan
+
+  - task: Deploy EQ ECS
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_ecs_application_cidrs: ["10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
+      TF_VAR_vpc_peer_cidr_block: ["10.30.27.0/24"]
+      TF_VAR_certificate_arn: '((prod_certificate_arn))'
+      TF_VAR_public_subnet_ids: '((prod_public_subnet_ids))'
+      TF_VAR_private_route_table_ids: '((prod_private_route_table_ids))'
+      TF_VAR_ons_access_ips: '((prod_ons_access_ips))'
+      TF_VAR_eq_gateway_ips: '((prod_eq_gateway_ips))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-terraform-ecs-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-terraform-ecs-release
+
+          mkdir eq-terraform-ecs
+          tar -xzf source.tar.gz -C eq-terraform-ecs --strip-components=1
+
+          cd eq-terraform-ecs
+          tfenv install
+
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=eq-terraform-ecs" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan
+
+  - task: Deploy EQ Alerting
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_slack_webhook_path: '((slack_webhook_path))'
+      TF_VAR_slack_channel: 'ops'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-terraform-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-terraform-release
+
+          mkdir eq-terraform
+          tar -xzf source.tar.gz -C eq-terraform --strip-components=1
+
+          cd eq-terraform/survey-runner-alerting
+          tfenv install
+
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-alerting" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan
+
+  - task: Deploy EQ Survey Runner Database
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_application_cidrs: ["10.30.20.48/28","10.30.20.64/28","10.30.20.80/28","10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
+      TF_VAR_database_name: '((prod_database_name))'
+      TF_VAR_database_user: '((prod_database_user))'
+      TF_VAR_database_password: '((prod_database_password))'
+      TF_VAR_database_instance_class: 'db.r3.xlarge'
+      TF_VAR_database_engine_version: '9.4.15'
+      TF_VAR_database_apply_immediately: false
+      TF_VAR_database_allocated_storage: 640
+      TF_VAR_snapshot_identifier: '((prod_database_snapshot_identifier))'
+      TF_VAR_preferred_maintenance_window: 'wed:03:00-wed:03:30'
+      TF_VAR_db_subnet_group_name: 'prod-eq-rds'
+      TF_VAR_database_identifier: 'prod-digitaleqrds'
+      TF_VAR_rds_security_group_name: 'prod-rds-access'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-terraform-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-terraform-release
+
+          mkdir eq-terraform
+          tar -xzf source.tar.gz -C eq-terraform --strip-components=1
+
+          cd eq-terraform/survey-runner-database
+          tfenv install
+
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-database" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan
+
+  - task: Deploy EQ Survey Runner DynamoDB
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-terraform-dynamodb-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-terraform-dynamodb-release
+
+          mkdir eq-terraform-dynamodb
+          tar -xzf source.tar.gz -C eq-terraform-dynamodb --strip-components=1
+
+          cd eq-terraform-dynamodb
+          tfenv install
+
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan
+
+  - task: Deploy EQ Survey Runner Queue
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_internet_gateway_id: '((prod_internet_gateway_id))'
+      TF_VAR_queue_cidrs: ["10.30.20.0/27"]
+      TF_VAR_rabbitmq_ips: ["((prod_rabbitmq_ip_prime))","((prod_rabbitmq_ip_failover))"]
+      TF_VAR_application_cidrs: ["10.30.20.48/28","10.30.20.64/28","10.30.20.80/28","10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
+      TF_VAR_rsyslogd_server_ip: "10.172.92.242"
+      TF_VAR_logserver_cidr: "10.171.93.21/32"
+      TF_VAR_audit_cidr: "10.172.92.242/32"
+      TF_VAR_sdx_cidrs: ["10.29.1.12/32","10.50.41.20/32","10.50.41.21/32",]
+
+      TF_VAR_aws_key_pair: '((prod_queue_key_pair))'
+      TF_VAR_rabbitmq_instance_type: 't2.medium'
+      TF_VAR_rabbitmq_admin_user: '((prod_rabbitmq_admin_user))'
+      TF_VAR_rabbitmq_admin_password: '((prod_rabbitmq_admin_password))'
+      TF_VAR_rabbitmq_write_user: '((prod_rabbitmq_write_user))'
+      TF_VAR_rabbitmq_write_password: '((prod_rabbitmq_write_password))'
+      TF_VAR_rabbitmq_read_user: '((prod_rabbitmq_read_user))'
+      TF_VAR_rabbitmq_read_password: '((prod_rabbitmq_read_password))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-terraform-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-terraform-release
+
+          mkdir eq-terraform
+          tar -xzf source.tar.gz -C eq-terraform --strip-components=1
+
+          cd eq-terraform/survey-runner-queue
+          tfenv install
+
+          terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=survey-runner-queue" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          # terraform plan
+
+  - task: Deploy EQ Survey Runner
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'prod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{prod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{prod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'surveys'
+      TF_VAR_container_name: 'eq-survey-runner'
+      TF_VAR_container_memory_reservation: 512
+      TF_VAR_application_min_tasks: '3'
+      TF_VAR_container_port: 5000
+      TF_VAR_listener_rule_priority: 10
+      TF_VAR_task_has_iam_policy: true
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-survey-runner-release
+      - name: eq-ecs-deploy-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy-release
+
+          mkdir eq-ecs-deploy
+          tar -xzf source.tar.gz -C eq-ecs-deploy --strip-components=1
+
+          cd eq-ecs-deploy
+          tfenv install
+
+          release_version=$(cat ../../eq-survey-runner-release/tag)
+
+          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="ecs-survey-runner"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan \
+          -var container_tag=$release_version \
+          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((prod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((prod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((prod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((prod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((prod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"prod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"prod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"prod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"prod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"prod-used-jti-claim\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_WRITE\",\"value\": \"False\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"True\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"Prod - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
+          -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((prod_submitted_responses_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((prod_questionnaire_state_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((prod_eq_session_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\"],\"Resource\": \"((prod_used_jti_claim_table_arn))\"}]}"'
+
+  - task: Deploy EQ Survey Runner Static
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'prod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{prod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{prod_aws_alb_listener_arn}}
+      TF_VAR_dns_record_name: 'prod-surveys.prod.eq.ons.digital'
+      TF_VAR_service_name: 'surveys-static'
+      TF_VAR_container_name: 'eq-survey-runner-static'
+      TF_VAR_application_min_tasks: '3'
+      TF_VAR_container_port: 80
+      TF_VAR_listener_rule_priority: 5
+      TF_VAR_alb_listener_path_pattern: '/s/*'
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+      TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-survey-runner-release
+      - name: eq-ecs-deploy-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy-release
+
+          mkdir eq-ecs-deploy
+          tar -xzf source.tar.gz -C eq-ecs-deploy --strip-components=1
+
+          cd eq-ecs-deploy
+          tfenv install
+
+          release_version=$(cat ../../eq-survey-runner-release/tag)
+
+          terraform init -backend-config="bucket="jenkins-ci-production-terraform-state"" -backend-config="key="preprod-ecs-survey-runner-static"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan \
+          -var container_tag=$release_version
+
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-runner'
+        attachments:
+        - pretext: Prod deployment plan failed
+          color: danger
+          title: Concourse Build $BUILD_ID
+          title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+
+  - task: Deploy Survey Launcher
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'prod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'surveys-launch'
+      TF_VAR_container_name: 'go-launch-a-survey'
+      TF_VAR_container_port: 8000
+      TF_VAR_listener_rule_priority: 101
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_task_has_iam_policy: true
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: go-launch-a-survey-release
+      - name: eq-ecs-deploy-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy-release
+          tfenv install
+
+          survey_launcher_tag=$(cat ../go-launch-a-survey-release/tag)
+
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-launcher"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+          terraform plan \
+          -var container_tag=$survey_launcher_tag \
+          -var 'container_environment_variables="{\"name\": \"JWT_ENCRYPTION_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-encryption-sr-public-key.pem\"},{\"name\": \"JWT_SIGNING_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-signing-rrm-private-key.pem\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets\"},{\"name\": \"SURVEY_RUNNER_URL\",\"value\": \"https://preprod-new-surveys.eq.ons.digital\"}"' \
+          -var 'task_iam_policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Action\":[\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::preprod-secrets*\"}]}"'
+
+  - task: Deploy Schema Validator
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'prod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{prod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{prod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'schema-validator'
+      TF_VAR_container_name: 'eq-schema-validator'
+      TF_VAR_container_port: 5000
+      TF_VAR_listener_rule_priority: 500
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-schema-validator-release
+      - name: eq-ecs-deploy-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy-release
+          tfenv install
+
+          schema_validator_tag=$(cat ../eq-schema-validator-release/tag)
+
+          terraform init -backend-config="bucket="concourse-prod-terraform-state"" -backend-config="key="prod-ecs-schema-validator"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan \
+          -var container_tag=$schema_validator_tag
+
+  - task: Deploy Author
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'prod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{prod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{prod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'author'
+      TF_VAR_container_name: 'eq-author'
+      TF_VAR_container_port: 3000
+      TF_VAR_listener_rule_priority: 102
+      TF_VAR_healthcheck_path: '/status.json'
+      TF_VAR_healthcheck_grace_period_seconds: 60
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+      TF_VAR_high_cpu_threshold: 80
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-author-release
+      - name: eq-ecs-deploy-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy-release
+          tfenv install
+
+          author_tag=$(cat ../eq-author-release/tag)
+
+          terraform init -backend-config="bucket="concourse-prod-terraform-state"" -backend-config="key="prod-author"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan \
+          -var container_tag=$author_tag \
+          -var 'container_environment_variables="{\"name\": \"REACT_APP_BASE_NAME\", \"value\": \"/eq-author\" },{ \"name\": \"REACT_APP_USE_MOCK_API\", \"value\": \"false\" },{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://prod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_PUBLISHER_URL\", \"value\": \"https://prod-publisher.eq.ons.digital/publish\" },{ \"name\": \"REACT_APP_GO_LAUNCH_A_SURVEY_URL\", \"value\": \"https://prod-new-surveys-launch.eq.ons.digital/quick-launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_ENABLE_AUTH\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" },{ \"name\": \"REACT_APP_FIREBASE_MESSAGING_SENDER_ID\", \"value\": \"((prod_author_firebase_messaging_sender_id))\" }"'
+
+  - task: Deploy Author-Api
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'prod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{prod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{prod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'author-api'
+      TF_VAR_container_name: 'eq-author-api'
+      TF_VAR_container_port: 4000
+      TF_VAR_listener_rule_priority: 103
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-author-api-release
+      - name: eq-ecs-deploy-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy-release
+          tfenv install
+
+          author_api_tag=$(cat ../eq-author-api-release/tag)
+
+          terraform init -backend-config="bucket="concourse-prod-terraform-state"" -backend-config="key="prod-author-api"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan \
+          -var container_tag=$author_api_tag \
+          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}"'
+
+  - task: Deploy Publisher
+    params:
+      TF_VAR_env: 'prod'
+      TF_VAR_aws_account_id: '((prod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((prod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'prod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{prod_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{prod_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'publisher'
+      TF_VAR_container_name: 'eq-publisher'
+      TF_VAR_container_port: 9000
+      TF_VAR_listener_rule_priority: 104
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-publisher-release
+      - name: eq-ecs-deploy-release
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy-release
+          tfenv install
+
+          publisher_tag=$(cat ../eq-publisher-release/tag)
+
+          terraform init -backend-config="bucket="concourse-prod-terraform-state"" -backend-config="key="prod-publisher"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+          terraform plan \
+          -var container_tag=$publisher_tag \
+          -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://prod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.eq.ons.digital/validate\" }"'
+
+  - put: slack-alert
+    params:
+      channel: '#eq-runner'
+      attachments:
+      - pretext: Prod deployment plan ready for review
+        color: good
+        title: Concourse Build $BUILD_ID
+        title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+
 - name: Prod-Deployment
   max_in_flight: 1
   plan:
