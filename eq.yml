@@ -939,7 +939,7 @@ jobs:
       TF_VAR_container_port: 3000
       TF_VAR_listener_rule_priority: 102
       TF_VAR_healthcheck_path: '/status.json'
-      TF_VAR_healthcheck_grace_period_seconds: 60
+      TF_VAR_healthcheck_grace_period_seconds: 120
       TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
       TF_VAR_high_cpu_threshold: 80
     config:
@@ -964,8 +964,8 @@ jobs:
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$author_tag \
-          -var 'container_environment_variables="{\"name\": \"REACT_APP_BASE_NAME\", \"value\": \"/eq-author\" },{ \"name\": \"REACT_APP_USE_MOCK_API\", \"value\": \"false\" },{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish\" },{ \"name\": \"REACT_APP_GO_LAUNCH_A_SURVEY_URL\", \"value\": \"https://preprod-new-surveys-launch.eq.ons.digital/quick-launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_ENABLE_AUTH\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" },{ \"name\": \"REACT_APP_FIREBASE_MESSAGING_SENDER_ID\", \"value\": \"((preprod_author_firebase_messaging_sender_id))\" }"'
-          
+          -var 'container_environment_variables="{\"name\": \"REACT_APP_BASE_NAME\", \"value\": \"/eq-author\" },{ \"name\": \"REACT_APP_USE_MOCK_API\", \"value\": \"false\" },{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_ENABLE_AUTH\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" },{ \"name\": \"REACT_APP_FIREBASE_MESSAGING_SENDER_ID\", \"value\": \"((preprod_author_firebase_messaging_sender_id))\" }"'
+
   - task: Deploy Author-Api
     params:
       TF_VAR_env: 'preprod'
@@ -1004,7 +1004,7 @@ jobs:
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-api"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$author_api_tag \
-          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}"'
+          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-new-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish\"}"'
   - task: Deploy Publisher
     params:
       TF_VAR_env: 'preprod'
