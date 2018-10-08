@@ -981,6 +981,7 @@ jobs:
       TF_VAR_container_port: 4000
       TF_VAR_listener_rule_priority: 103
       TF_VAR_healthcheck_path: '/status'
+      TF_VAR_task_has_iam_policy: true
       TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
       platform: linux
@@ -1004,7 +1005,8 @@ jobs:
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-api"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$author_api_tag \
-          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-new-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish\"}"'
+          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-new-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}, {\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-author\"},{\"name\": \"KEYS_FILE\",\"value\": \"/secrets/keys.yml\"}"'
+          -var 'task_iam_policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Action\":[\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::preprod-secrets-author*\"}]}"'
   - task: Deploy Publisher
     params:
       TF_VAR_env: 'preprod'
