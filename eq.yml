@@ -176,8 +176,7 @@ jobs:
         - -exc
         - |
           cd eq-survey-runner
-          pipenv install --dev
-          pipenv run ./scripts/build.sh
+          ./scripts/build.sh
 
           cp -R ../eq-survey-runner/* ../compiled-eq-survey-runner
           cp ../eq-survey-runner/.git/HEAD ../compiled-eq-survey-runner/.application-version
@@ -408,12 +407,8 @@ jobs:
         args:
         - -exc
         - |
-          pyenv install 3.6.3
-
           cd eq-schema-validator
-          pip install -U pip pipenv
-          pipenv install --dev --deploy
-          pipenv run ./scripts/build.sh
+          ./scripts/build.sh
 
           cp -R ../eq-schema-validator/* ../compiled-eq-schema-validator
           cp ../eq-schema-validator/.git/HEAD ../compiled-eq-schema-validator/.application-version
@@ -1005,7 +1000,7 @@ jobs:
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-api"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$author_api_tag \
-          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-new-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}, {\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-author\"},{\"name\": \"KEYS_FILE\",\"value\": \"/secrets/keys.yml\"}"'
+          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-new-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}, {\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-author\"},{\"name\": \"KEYS_FILE\",\"value\": \"/secrets/keys.yml\"}"' \
           -var 'task_iam_policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Action\":[\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::preprod-secrets-author*\"}]}"'
   - task: Deploy Publisher
     params:

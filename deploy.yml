@@ -88,7 +88,6 @@ jobs:
           tar -xzf source.tar.gz -C eq-survey-runner --strip-components=1
 
           cd eq-survey-runner
-          pipenv install --dev
           yarn compile
 
           cp -R ../eq-survey-runner/* ../../compiled-eq-survey-runner
