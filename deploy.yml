@@ -12,8 +12,6 @@ resources:
     owner: ONSdigital
     repository: eq-survey-runner
     access_token: ((github_access_token))
-    release: true
-    pre_release: true
 
 - name: eq-terraform-release
   type: github-release
@@ -118,22 +116,18 @@ jobs:
       include_source_tarball: true
     trigger: true
   - get: eq-terraform-release
-    version: { tag: '19.0.0' }
     trigger: true
     params:
       include_source_tarball: true
   - get: eq-terraform-dynamodb-release
-    version: { tag: 'v2.0' }
     trigger: true
     params:
       include_source_tarball: true
   - get: eq-terraform-ecs-release
-    version: { tag: 'v4.0' }
     trigger: true
     params:
       include_source_tarball: true
   - get: eq-ecs-deploy-release
-    version: { tag: 'v2.0' }
     trigger: true
     params:
       include_source_tarball: true
