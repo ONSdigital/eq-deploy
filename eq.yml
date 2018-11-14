@@ -30,22 +30,10 @@ resources:
     uri: https://github.com/ONSdigital/eq-ecs-deploy.git
     branch: master
 
-- name: eq-author
+- name: eq-author-app
   type: git
   source:
-    uri: https://github.com/ONSdigital/eq-author.git
-    branch: master
-
-- name: eq-author-api
-  type: git
-  source:
-    uri: https://github.com/ONSdigital/eq-author-api.git
-    branch: master
-
-- name: eq-publisher
-  type: git
-  source:
-    uri: https://github.com/ONSdigital/eq-publisher.git
+    uri: https://github.com/ONSdigital/eq-author-app.git
     branch: master
 
 - name: go-launch-a-survey
@@ -194,12 +182,13 @@ jobs:
     get_params:
       skip_download: true
 
-- name: build-eq-author
+
+- name: build-eq-author-app
   public: true
   plan:
-  - get: eq-author
+  - get: eq-author-app
     trigger: true
-  - task: Run Tests
+  - task: Create Build Args
     config:
       platform: linux
       image_resource:
@@ -207,7 +196,7 @@ jobs:
         source:
           repository: onsdigital/eq-author-build
       inputs:
-      - name: eq-author
+      - name: eq-author-app
       outputs:
       - name: build_args
       run:
@@ -215,86 +204,33 @@ jobs:
         args:
         - -exc
         - |
-          cd eq-author
-          yarn install
-
-          eq_author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
+          cd eq-author-app
+          eq_author_tag=$(cat ../eq-author-app/.git/HEAD | xargs echo -n)
           echo "{\"APPLICATION_VERSION\":\""$eq_author_tag"\"}" > ../build_args/args
   - put: eq-author-image
     params:
-      build: eq-author
-      tag: eq-author/.git/HEAD
+      build: eq-author-app/eq-author
+      tag: eq-author-app/.git/HEAD
       build_args_file: build_args/args
     get_params:
       skip_download: true
 
-- name: build-eq-author-api
-  public: true
-  plan:
-  - get: eq-author-api
-    trigger: true
-  - task: Run Tests
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-author-build
-      inputs:
-      - name: eq-author-api
-      outputs:
-      - name: build_args
-      run:
-        path: sh
-        args:
-        - -exc
-        - |
-          cd eq-author-api
-          yarn install
-
-          eq_author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
-          echo "{\"APPLICATION_VERSION\":\""$eq_author_api_tag"\"}" > ../build_args/args
   - put: eq-author-api-image
     params:
-      build: eq-author-api
-      tag: eq-author-api/.git/HEAD
+      build: eq-author-app/eq-author-api
+      tag: eq-author-app/.git/HEAD
       build_args_file: build_args/args
     get_params:
       skip_download: true
 
-- name: build-eq-publisher
-  public: true
-  plan:
-  - get: eq-publisher
-    trigger: true
-  - task: Run Tests
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-author-build
-      inputs:
-      - name: eq-publisher
-      outputs:
-      - name: build_args
-      run:
-        path: sh
-        args:
-        - -exc
-        - |
-          cd eq-publisher
-          yarn install
-
-          eq_publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
-          echo "{\"APPLICATION_VERSION\":\""$eq_publisher_tag"\"}" > ../build_args/args
   - put: eq-publisher-image
     params:
-      build: eq-publisher
-      tag: eq-publisher/.git/HEAD
+      build: eq-author-app/eq-publisher
+      tag: eq-author-app/.git/HEAD
       build_args_file: build_args/args
     get_params:
       skip_download: true
+
 
 - name: build-go-launch-a-survey
   public: true
@@ -452,14 +388,8 @@ jobs:
   - get: eq-survey-runner
     passed: [build-eq-survey-runner]
     trigger: true
-  - get: eq-author
-    passed: [build-eq-author]
-    trigger: true
-  - get: eq-author-api
-    passed: [build-eq-author-api]
-    trigger: true
-  - get: eq-publisher
-    passed: [build-eq-publisher]
+  - get: eq-author-app
+    passed: [build-eq-author-app]
     trigger: true
   - get: go-launch-a-survey
     passed: [build-go-launch-a-survey]
@@ -512,9 +442,7 @@ jobs:
       inputs:
       - name: eq-terraform
       - name: eq-survey-runner
-      - name: eq-author
-      - name: eq-author-api
-      - name: eq-publisher
+      - name: eq-author-app
       - name: go-launch-a-survey
       - name: eq-schema-validator
       - name: eq-lookup-api
@@ -532,9 +460,7 @@ jobs:
           ansible-galaxy install -f -r survey-runner-queue/ansible-requirements.yml
 
           survey_runner_tag=$(cat ../eq-survey-runner/.git/HEAD | xargs echo -n)
-          eq_author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
-          eq_author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
-          eq_publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
+          eq_author_tag=$(cat ../eq-author-app/.git/HEAD | xargs echo -n)
           go_launch_a_survey_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
           eq_schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
           eq_lookup_api_tag=$(cat ../eq-lookup-api/.git/HEAD | xargs echo -n)
@@ -544,8 +470,8 @@ jobs:
             -var survey_runner_tag=$survey_runner_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var author_tag=$eq_author_tag \
-            -var author_api_tag=$eq_author_api_tag \
-            -var publisher_tag=$eq_publisher_tag \
+            -var author_api_tag=$eq_author_tag \
+            -var publisher_tag=$eq_author_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var schema_validator_tag=$eq_schema_validator_tag \
             -var suggest_api_tag=$eq_lookup_api_tag
@@ -593,13 +519,13 @@ jobs:
         source:
           repository: onsdigital/eq-terraform-build
       inputs:
-      - name: eq-author-api
+      - name: eq-author-app
       run:
         path: bash
         args:
         - -exc
         - |
-          author_api_tag=$(cat eq-author-api/.git/HEAD | xargs echo -n)
+          author_api_tag=$(cat eq-author-app/.git/HEAD | xargs echo -n)
           while [[ "$(curl -s https://staging-author-api.dev.eq.ons.digital/status)" != *"$author_api_tag"* ]]; do sleep 5; done
     on_failure:
       put: slack-alert
@@ -619,13 +545,13 @@ jobs:
         source:
           repository: onsdigital/eq-terraform-build
       inputs:
-      - name: eq-author
+      - name: eq-author-app
       run:
         path: bash
         args:
         - -exc
         - |
-          author_tag=$(cat eq-author/.git/HEAD | xargs echo -n)
+          author_tag=$(cat eq-author-app/.git/HEAD | xargs echo -n)
           while [[ "$(curl -s https://staging-author.dev.eq.ons.digital/status.json)" != *"$author_tag"* ]]; do sleep 5; done
     on_failure:
       put: slack-alert
@@ -645,13 +571,13 @@ jobs:
         source:
           repository: onsdigital/eq-terraform-build
       inputs:
-      - name: eq-publisher
+      - name: eq-author-app
       run:
         path: bash
         args:
         - -exc
         - |
-          publisher_tag=$(cat eq-publisher/.git/HEAD | xargs echo -n)
+          publisher_tag=$(cat eq-author-app/.git/HEAD | xargs echo -n)
           while [[ "$(curl -s https://staging-publisher.dev.eq.ons.digital/status)" != *"$publisher_tag"* ]]; do sleep 5; done
     on_failure:
       put: slack-alert
@@ -673,13 +599,7 @@ jobs:
     - get: eq-survey-runner
       passed: [staging-deploy]
       trigger: true
-    - get: eq-author
-      passed: [staging-deploy]
-      trigger: true
-    - get: eq-author-api
-      passed: [staging-deploy]
-      trigger: true
-    - get: eq-publisher
+    - get: eq-author-app
       passed: [staging-deploy]
       trigger: true
     - get: go-launch-a-survey
@@ -779,15 +699,6 @@ jobs:
   max_in_flight: 1
   serial_groups: [pre-prod-deploy, pre-prod-smoke-tests]
   plan:
-  - get: eq-author
-    passed: [smoke-tests]
-    trigger: true
-  - get: eq-author-api
-    passed: [smoke-tests]
-    trigger: true
-  - get: eq-publisher
-    passed: [smoke-tests]
-    trigger: true
   - get: go-launch-a-survey
     passed: [smoke-tests]
     trigger: true
@@ -919,129 +830,6 @@ jobs:
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-survey-register"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$survey_register_tag
-  - task: Deploy Author
-    params:
-      TF_VAR_env: 'preprod'
-      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
-      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-      TF_VAR_vpc_id: '((preprod_vpc_id))'
-      TF_VAR_ecs_cluster_name: 'preprod-eq'
-      TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
-      TF_VAR_service_name: 'author'
-      TF_VAR_container_name: 'eq-author'
-      TF_VAR_container_port: 3000
-      TF_VAR_listener_rule_priority: 102
-      TF_VAR_healthcheck_path: '/status.json'
-      TF_VAR_healthcheck_grace_period_seconds: 120
-      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
-      TF_VAR_high_cpu_threshold: 80
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-      inputs:
-      - name: eq-author
-      - name: eq-ecs-deploy
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          cd eq-ecs-deploy
-          tfenv install
-
-          author_tag=$(cat ../eq-author/.git/HEAD | xargs echo -n)
-
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
-          terraform apply \
-          -var container_tag=$author_tag \
-          -var 'container_environment_variables="{\"name\": \"REACT_APP_BASE_NAME\", \"value\": \"/eq-author\" },{ \"name\": \"REACT_APP_USE_MOCK_API\", \"value\": \"false\" },{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_ENABLE_AUTH\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" },{ \"name\": \"REACT_APP_FIREBASE_MESSAGING_SENDER_ID\", \"value\": \"((preprod_author_firebase_messaging_sender_id))\" }"'
-
-  - task: Deploy Author-Api
-    params:
-      TF_VAR_env: 'preprod'
-      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
-      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-      TF_VAR_vpc_id: '((preprod_vpc_id))'
-      TF_VAR_ecs_cluster_name: 'preprod-eq'
-      TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
-      TF_VAR_service_name: 'author-api'
-      TF_VAR_container_name: 'eq-author-api'
-      TF_VAR_container_port: 4000
-      TF_VAR_listener_rule_priority: 103
-      TF_VAR_healthcheck_path: '/status'
-      TF_VAR_task_has_iam_policy: true
-      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-      inputs:
-      - name: eq-author-api
-      - name: eq-ecs-deploy
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          cd eq-ecs-deploy
-          tfenv install
-
-          author_api_tag=$(cat ../eq-author-api/.git/HEAD | xargs echo -n)
-
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-api"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
-          terraform apply \
-          -var container_tag=$author_api_tag \
-          -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-new-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}, {\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-author\"},{\"name\": \"KEYS_FILE\",\"value\": \"/secrets/keys.yml\"}"' \
-          -var 'task_iam_policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Action\":[\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::preprod-secrets-author*\"}]}"'
-  - task: Deploy Publisher
-    params:
-      TF_VAR_env: 'preprod'
-      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
-      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-      TF_VAR_vpc_id: '((preprod_vpc_id))'
-      TF_VAR_ecs_cluster_name: 'preprod-eq'
-      TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
-      TF_VAR_service_name: 'publisher'
-      TF_VAR_container_name: 'eq-publisher'
-      TF_VAR_container_port: 9000
-      TF_VAR_listener_rule_priority: 104
-      TF_VAR_healthcheck_path: '/status'
-      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-      inputs:
-      - name: eq-publisher
-      - name: eq-ecs-deploy
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          cd eq-ecs-deploy
-          tfenv install
-
-          publisher_tag=$(cat ../eq-publisher/.git/HEAD | xargs echo -n)
-
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-publisher"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
-          terraform apply \
-          -var container_tag=$publisher_tag \
-          -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital/validate\" }"'
-
   - task: Deploy Address Lookup API
     params:
       TF_VAR_env: 'preprod'
@@ -1081,90 +869,3 @@ jobs:
           terraform apply \
           -var container_tag=$address_lookup_api_tag \
           -var 'container_environment_variables="{ \"name\": \"LOOKUP_URL\", \"value\": \"((preprod_address_lookup_url))\" },{ \"name\": \"AUTH_KEY\", \"value\": \"((preprod_address_lookup_auth_token))\" }"'
-
-  - task: Wait for Deployed Author API
-    timeout: 10m
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-      inputs:
-      - name: eq-author-api
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          author_api_tag=$(cat eq-author-api/.git/HEAD | xargs echo -n)
-          while [[ "$(curl -s https://preprod-author-api.eq.ons.digital/status)" != *"$author_api_tag"* ]]; do sleep 5; done
-    on_failure:
-      put: slack-alert
-      params:
-        channel: '#eq-author'
-        attachments:
-          - pretext: PreProd Author API Deploy Failed
-            color: danger
-            title: Concourse Build $BUILD_ID
-            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
-  - task: Wait for Deployed Author
-    timeout: 10m
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-      inputs:
-      - name: eq-author
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          author_tag=$(cat eq-author/.git/HEAD | xargs echo -n)
-          while [[ "$(curl -s https://preprod-author.eq.ons.digital/status.json)" != *"$author_tag"* ]]; do sleep 5; done
-    on_failure:
-      put: slack-alert
-      params:
-        channel: '#eq-author'
-        attachments:
-          - pretext: PreProd Author Deploy Failed
-            color: danger
-            title: Concourse Build $BUILD_ID
-            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
-  - task: Wait for Deployed Publisher
-    timeout: 10m
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-      inputs:
-      - name: eq-publisher
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          publisher_tag=$(cat eq-publisher/.git/HEAD | xargs echo -n)
-          while [[ "$(curl -s https://preprod-publisher.eq.ons.digital/status)" != *"$publisher_tag"* ]]; do sleep 5; done
-    on_failure:
-      put: slack-alert
-      params:
-        channel: '#eq-author'
-        attachments:
-          - pretext: PreProd Publisher Deploy Failed
-            color: danger
-            title: Concourse Build $BUILD_ID
-            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
-  - put: slack-alert
-    params:
-      channel: '#eq-author'
-      attachments:
-        - pretext: PreProd deployment successful
-          color: good
-          title: Concourse Build $BUILD_ID
-          title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
