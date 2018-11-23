@@ -194,30 +194,35 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: onsdigital/eq-author-build
+          repository: cypress/base
+          tag: 10
       inputs:
       - name: eq-author-app
       outputs:
       - name: build_args
+      - name: built-eq-author-app
       run:
-        path: sh
+        path: bash
         args:
         - -exc
         - |
-          cd eq-author-app
-          eq_author_tag=$(cat ../eq-author-app/.git/HEAD | xargs echo -n)
-          echo "{\"APPLICATION_VERSION\":\""$eq_author_tag"\"}" > ../build_args/args
+          pushd eq-author-app
+          export EQ_AUTHOR_VERSION=$(cat .git/HEAD | xargs echo -n)
+          echo "{\"APPLICATION_VERSION\":\""$EQ_AUTHOR_VERSION"\"}" > ../build_args/args
+          ./concourse.sh
+          popd
+          cp -R eq-author-app/* built-eq-author-app
+
   - put: eq-author-image
     params:
-      build: eq-author-app/eq-author
+      build: built-eq-author-app/eq-author
       tag: eq-author-app/.git/HEAD
-      build_args_file: build_args/args
     get_params:
       skip_download: true
 
   - put: eq-author-api-image
     params:
-      build: eq-author-app/eq-author-api
+      build: built-eq-author-app/eq-author-api
       tag: eq-author-app/.git/HEAD
       build_args_file: build_args/args
     get_params:
@@ -225,7 +230,7 @@ jobs:
 
   - put: eq-publisher-image
     params:
-      build: eq-author-app/eq-publisher
+      build: built-eq-author-app/eq-publisher
       tag: eq-author-app/.git/HEAD
       build_args_file: build_args/args
     get_params:
@@ -625,8 +630,8 @@ jobs:
       image_resource:
         type: docker-image
         source:
-          repository: onsdigital/eq-author-build
-          tag: chrome-64
+          repository: cypress/base
+          tag: 10
       inputs:
       - name: eq-smoke-tests
       run:
