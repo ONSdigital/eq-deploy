@@ -783,8 +783,8 @@ jobs:
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_aws_alb_arn: {{preprod_external_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_external_aws_alb_listener_arn}}
       TF_VAR_service_name: 'surveys-launch'
       TF_VAR_container_name: 'go-launch-a-survey'
       TF_VAR_container_port: 8000
@@ -825,8 +825,8 @@ jobs:
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_aws_alb_arn: {{preprod_external_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_external_aws_alb_listener_arn}}
       TF_VAR_service_name: 'address-lookup-api'
       TF_VAR_container_name: 'eq-address-lookup-api'
       TF_VAR_container_port: 6030
