@@ -292,11 +292,12 @@ jobs:
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_application_cidrs: ["10.30.21.192/28","10.30.21.208/28","10.30.21.224/28"]
       TF_VAR_vpc_peer_cidr_block: ["10.30.26.0/24"]
+      TF_VAR_ecs_cluster_name: 'eq-runner'
       TF_VAR_certificate_arn: '((preprod_certificate_arn))'
       TF_VAR_public_subnet_ids: '((preprod_public_subnet_ids))'
       TF_VAR_private_route_table_ids: '((preprod_private_route_table_ids))'
       TF_VAR_ons_access_ips: '((preprod_ons_access_ips))'
-      TF_VAR_eq_gateway_ips: '((preprod_eq_gateway_ips))'
+      TF_VAR_gateway_ips: '((preprod_eq_gateway_ips))'
     config:
       platform: linux
       image_resource:
@@ -969,11 +970,12 @@ jobs:
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_ecs_application_cidrs: ["10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
       TF_VAR_vpc_peer_cidr_block: ["10.30.27.0/24"]
+      TF_VAR_ecs_cluster_name: 'eq-runner'
       TF_VAR_certificate_arn: '((prod_certificate_arn))'
       TF_VAR_public_subnet_ids: '((prod_public_subnet_ids))'
       TF_VAR_private_route_table_ids: '((prod_private_route_table_ids))'
       TF_VAR_ons_access_ips: '((prod_ons_access_ips))'
-      TF_VAR_eq_gateway_ips: '((prod_eq_gateway_ips))'
+      TF_VAR_gateway_ips: '((prod_eq_gateway_ips))'
     config:
       platform: linux
       image_resource:
@@ -1356,11 +1358,12 @@ jobs:
       TF_VAR_vpc_id: '((prod_vpc_id))'
       TF_VAR_ecs_application_cidrs: ["10.30.20.192/28","10.30.20.208/28","10.30.20.224/28"]
       TF_VAR_vpc_peer_cidr_block: ["10.30.27.0/24"]
+      TF_VAR_ecs_cluster_name: 'eq-runner'
       TF_VAR_certificate_arn: '((prod_certificate_arn))'
       TF_VAR_public_subnet_ids: '((prod_public_subnet_ids))'
       TF_VAR_private_route_table_ids: '((prod_private_route_table_ids))'
       TF_VAR_ons_access_ips: '((prod_ons_access_ips))'
-      TF_VAR_eq_gateway_ips: '((prod_eq_gateway_ips))'
+      TF_VAR_gateway_ips: '((prod_eq_gateway_ips))'
     config:
       platform: linux
       image_resource:
