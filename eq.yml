@@ -18,6 +18,12 @@ resources:
     uri: https://github.com/ONSdigital/eq-terraform.git
     branch: master
 
+- name: eq-author-terraform
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-author-terraform.git
+    branch: master
+
 - name: eq-terraform-ecs
   type: git
   source:
@@ -413,6 +419,8 @@ jobs:
     trigger: true
   - get: eq-terraform
     trigger: true
+  - get: eq-author-terraform
+    trigger: true
   - get: eq-terraform-ecs
     trigger: true
   - get: eq-ecs-deploy
@@ -430,14 +438,9 @@ jobs:
       TF_VAR_survey_runner_docker_registry: {{docker_registry}}
       TF_VAR_survey_launcher_registry: {{docker_registry}}
       TF_VAR_schema_validator_registry: {{docker_registry}}
-      TF_VAR_author_registry: {{docker_registry}}
       TF_VAR_auto_deploy_updated_tags: false
       TF_VAR_ecs_cluster_min_size: 3
       TF_VAR_survey_runner_min_tasks: 3
-      TF_VAR_author_enable_auth: true
-      TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
-      TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
-      TF_VAR_author_firebase_messaging_sender_id: {{staging_author_firebase_messaging_sender_id}}
     config:
       platform: linux
       image_resource:
@@ -447,7 +450,6 @@ jobs:
       inputs:
       - name: eq-terraform
       - name: eq-survey-runner
-      - name: eq-author-app
       - name: go-launch-a-survey
       - name: eq-schema-validator
       - name: eq-lookup-api
@@ -465,7 +467,6 @@ jobs:
           ansible-galaxy install -f -r survey-runner-queue/ansible-requirements.yml
 
           survey_runner_tag=$(cat ../eq-survey-runner/.git/HEAD | xargs echo -n)
-          eq_author_tag=$(cat ../eq-author-app/.git/HEAD | xargs echo -n)
           go_launch_a_survey_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
           eq_schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
           eq_lookup_api_tag=$(cat ../eq-lookup-api/.git/HEAD | xargs echo -n)
@@ -474,12 +475,51 @@ jobs:
           echo "eu-west-1" | terraform apply \
             -var survey_runner_tag=$survey_runner_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
-            -var author_tag=$eq_author_tag \
-            -var author_api_tag=$eq_author_tag \
-            -var publisher_tag=$eq_author_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var schema_validator_tag=$eq_schema_validator_tag \
             -var suggest_api_tag=$eq_lookup_api_tag
+  - task: Deploy Author Terraform
+    params:
+      TF_VAR_env: 'staging'
+      TF_VAR_aws_account_id: '((dev_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
+      TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
+      TF_VAR_certificate_arn: {{staging_certificate_arn}}
+      TF_VAR_slack_webhook_path: {{slack_webhook_path}}
+      TF_VAR_survey_runner_docker_registry: {{docker_registry}}
+      TF_VAR_schema_validator_registry: {{docker_registry}}
+      TF_VAR_author_registry: {{docker_registry}}
+      TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
+      TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-author-terraform
+      - name: eq-survey-runner
+      - name: eq-author-app
+      - name: eq-schema-validator
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Deploy Staging Author"
+          cd eq-author-terraform
+          tfenv install
+
+          survey_runner_tag=$(cat ../eq-survey-runner/.git/HEAD | xargs echo -n)
+          eq_author_tag=$(cat ../eq-author-app/.git/HEAD | xargs echo -n)
+          eq_schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
+          echo "eu-west-1" | terraform apply \
+            -var survey_runner_tag=$survey_runner_tag \
+            -var author_tag=$eq_author_tag \
+            -var schema_validator_tag=$eq_schema_validator_tag
     on_failure:
       put: slack-alert
       params:
@@ -610,16 +650,7 @@ jobs:
     - get: go-launch-a-survey
       passed: [staging-deploy]
       trigger: true
-    - get: eq-schema-validator
-      passed: [staging-deploy]
-      trigger: true
-    - get: eq-survey-register
-      passed: [staging-deploy]
-      trigger: true
     - get: eq-address-lookup-api
-      passed: [staging-deploy]
-      trigger: true
-    - get: eq-terraform
       passed: [staging-deploy]
       trigger: true
   - task: Test
@@ -660,6 +691,8 @@ jobs:
     trigger: true
   - get: eq-terraform
     passed: [staging-deploy]
+  - get: eq-author-terraform
+    passed: [staging-deploy]
   - task: Destroy Terraform
     params:
       TF_VAR_env: 'staging'
@@ -697,7 +730,38 @@ jobs:
 
           terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
           echo "eu-west-1" | terraform destroy -force
+  - task: Destroy Author Terraform
+    params:
+      TF_VAR_env: 'staging'
+      TF_VAR_aws_account_id: '((dev_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
+      TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
+      TF_VAR_certificate_arn: {{staging_certificate_arn}}
+      TF_VAR_slack_webhook_path: {{slack_webhook_path}}
+      TF_VAR_survey_runner_docker_registry: {{docker_registry}}
+      TF_VAR_schema_validator_registry: {{docker_registry}}
+      TF_VAR_author_registry: {{docker_registry}}
+      TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
+      TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+        - name: eq-author-terraform
+      run:
+        path: bash
+        args:
+          - -exc
+          - |
+            echo "Deploy Staging Author"
+            cd eq-author-terraform
+            tfenv install
 
+            terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
+            echo "eu-west-1" | terraform destroy -force
 
 - name: pre-prod-deploy
   public: true
@@ -705,12 +769,6 @@ jobs:
   serial_groups: [pre-prod-deploy, pre-prod-smoke-tests]
   plan:
   - get: go-launch-a-survey
-    passed: [smoke-tests]
-    trigger: true
-  - get: eq-schema-validator
-    passed: [smoke-tests]
-    trigger: true
-  - get: eq-survey-register
     passed: [smoke-tests]
     trigger: true
   - get: eq-address-lookup-api
@@ -759,82 +817,6 @@ jobs:
           -var 'container_environment_variables="{\"name\": \"JWT_ENCRYPTION_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-encryption-sr-public-key.pem\"},{\"name\": \"JWT_SIGNING_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-signing-rrm-private-key.pem\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets\"},{\"name\": \"SURVEY_RUNNER_URL\",\"value\": \"https://preprod-new-surveys.eq.ons.digital\"},{\"name\": \"SCHEMA_VALIDATOR_URL\",\"value\": \"https://preprod-schema-validator.eq.ons.digital\"}"' \
           -var 'task_iam_policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Action\":[\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::preprod-secrets*\"}]}"'
 
-
-  - task: Deploy Schema Validator
-    params:
-      TF_VAR_env: 'preprod'
-      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
-      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-      TF_VAR_vpc_id: '((preprod_vpc_id))'
-      TF_VAR_ecs_cluster_name: 'preprod-eq'
-      TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
-      TF_VAR_service_name: 'schema-validator'
-      TF_VAR_container_name: 'eq-schema-validator'
-      TF_VAR_container_port: 5000
-      TF_VAR_listener_rule_priority: 500
-      TF_VAR_healthcheck_path: '/status'
-      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-      inputs:
-      - name: eq-schema-validator
-      - name: eq-ecs-deploy
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          cd eq-ecs-deploy
-          tfenv install
-
-          schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
-
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-schema-validator"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
-          terraform apply \
-          -var container_tag=$schema_validator_tag
-  - task: Deploy Survey Register
-    params:
-      TF_VAR_env: 'preprod'
-      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
-      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-      TF_VAR_vpc_id: '((preprod_vpc_id))'
-      TF_VAR_ecs_cluster_name: 'preprod-eq'
-      TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
-      TF_VAR_service_name: 'survey-register'
-      TF_VAR_container_name: 'eq-survey-register'
-      TF_VAR_container_port: 8080
-      TF_VAR_listener_rule_priority: 600
-      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-      inputs:
-      - name: eq-survey-register
-      - name: eq-ecs-deploy
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          cd eq-ecs-deploy
-          tfenv install
-
-          survey_register_tag=$(cat ../eq-survey-register/.git/HEAD | xargs echo -n)
-
-          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-survey-register"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
-          terraform apply \
-          -var container_tag=$survey_register_tag
   - task: Deploy Address Lookup API
     params:
       TF_VAR_env: 'preprod'
