@@ -656,6 +656,7 @@ jobs:
   - task: Test
     params:
       BASE_URL: https://staging-author.dev.eq.ons.digital
+      CYPRESS_RECORD_KEY: ((staging_cypress_record_key))
     config:
       platform: linux
       image_resource:
