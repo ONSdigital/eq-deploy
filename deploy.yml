@@ -343,6 +343,8 @@ jobs:
       TF_VAR_private_route_table_ids: '((preprod_private_route_table_ids))'
       TF_VAR_ons_access_ips: '((preprod_ons_access_ips))'
       TF_VAR_gateway_ips: '((preprod_eq_gateway_ips))'
+      TF_VAR_create_internal_elb: true
+      TF_VAR_create_external_elb: true
     config:
       platform: linux
       image_resource:
@@ -526,8 +528,8 @@ jobs:
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_aws_alb_arn: {{preprod_internal_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_internal_aws_alb_listener_arn}}
       TF_VAR_service_name: 'surveys'
       TF_VAR_container_name: 'eq-survey-runner'
       TF_VAR_container_port: 5000
@@ -573,8 +575,8 @@ jobs:
       TF_VAR_vpc_id: '((preprod_vpc_id))'
       TF_VAR_ecs_cluster_name: 'preprod-eq'
       TF_VAR_docker_registry: {{docker_registry}}
-      TF_VAR_aws_alb_arn: {{preprod_aws_alb_arn}}
-      TF_VAR_aws_alb_listener_arn: {{preprod_aws_alb_listener_arn}}
+      TF_VAR_aws_alb_arn: {{preprod_internal_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_internal_aws_alb_listener_arn}}
       TF_VAR_dns_record_name: 'preprod-new-surveys.eq.ons.digital'
       TF_VAR_service_name: 'surveys-static'
       TF_VAR_container_name: 'eq-survey-runner-static'
