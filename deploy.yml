@@ -367,7 +367,7 @@ jobs:
           tfenv install
 
           terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=eq-terraform-ecs" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
-          terraform plan
+          terraform apply
 
   - task: Deploy EQ Alerting
     params:
@@ -582,7 +582,7 @@ jobs:
       TF_VAR_container_name: 'eq-survey-runner-static'
       TF_VAR_container_port: 80
       TF_VAR_listener_rule_priority: 5
-      TF_VAR_alb_listener_path_pattern: '/s/*'
+      TF_VAR_alb_listener_path_patterns: ["/s/*"]
       TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
     config:
       platform: linux
@@ -628,7 +628,7 @@ jobs:
         - -exc
         - |
           survey_runner_tag=$(cat eq-survey-runner-release/tag)
-          while [[ "$(curl -s https://preprod-new-surveys.eq.ons.digital/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
+          while [[ "$(curl -s https://eqtest.onsdigital.uk/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
     on_failure:
       put: slack-alert
       params:
@@ -994,7 +994,7 @@ jobs:
       TF_VAR_application_min_tasks: '3'
       TF_VAR_container_port: 80
       TF_VAR_listener_rule_priority: 5
-      TF_VAR_alb_listener_path_pattern: '/s/*'
+      TF_VAR_alb_listener_path_patterns: ["/s/*"]
       TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
       TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
     config:
@@ -1384,7 +1384,7 @@ jobs:
       TF_VAR_application_min_tasks: '3'
       TF_VAR_container_port: 80
       TF_VAR_listener_rule_priority: 5
-      TF_VAR_alb_listener_path_pattern: '/s/*'
+      TF_VAR_alb_listener_path_patterns: ["/s/*"]
       TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
       TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
     config:
@@ -1679,15 +1679,18 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{preprod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{preprod_author_aws_alb_external_listener_arn}}
+        TF_VAR_dns_record_name: 'preprod-author.eq.ons.digital'
         TF_VAR_service_name: 'author-api'
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
-        TF_VAR_listener_rule_priority: 103
+        TF_VAR_listener_rule_priority: 300
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*"]
+        TF_VAR_auth_unauth_action: 'deny'
       config:
         platform: linux
         image_resource:
@@ -1731,7 +1734,7 @@ jobs:
         TF_VAR_service_name: 'author'
         TF_VAR_container_name: 'eq-author'
         TF_VAR_container_port: 3000
-        TF_VAR_listener_rule_priority: 102
+        TF_VAR_listener_rule_priority: 400
         TF_VAR_healthcheck_path: '/status.json'
         TF_VAR_healthcheck_grace_period_seconds: 120
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
@@ -1741,6 +1744,7 @@ jobs:
         TF_VAR_launch_type: 'FARGATE'
         TF_VAR_cpu_units: '0.25 vCPU'
         TF_VAR_memory_units: '0.5GB'
+        TF_VAR_auth_unauth_action: 'authenticate'
       config:
         platform: linux
         image_resource:
@@ -1769,7 +1773,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" }, {\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((preprod_author_fullstory_org))\"}, {\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((preprod_author_sentry_dns))\"}"'
+              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://preprod-author.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" }, {\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((preprod_author_fullstory_org))\"}, {\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((preprod_author_sentry_dns))\"}"'
 
     - task: Deploy Schema Validator
       params:
@@ -1784,7 +1788,7 @@ jobs:
         TF_VAR_service_name: 'schema-validator'
         TF_VAR_container_name: 'eq-schema-validator'
         TF_VAR_container_port: 5000
-        TF_VAR_listener_rule_priority: 500
+        TF_VAR_listener_rule_priority: 600
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
@@ -1831,7 +1835,7 @@ jobs:
         TF_VAR_service_name: 'publisher'
         TF_VAR_container_name: 'eq-publisher'
         TF_VAR_container_port: 9000
-        TF_VAR_listener_rule_priority: 104
+        TF_VAR_listener_rule_priority: 500
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
@@ -2254,16 +2258,19 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{prod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{prod_author_aws_alb_external_listener_arn}}
+        TF_VAR_dns_record_name: 'prod-author.prod.eq.ons.digital'
         TF_VAR_service_name: 'author-api'
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
-        TF_VAR_listener_rule_priority: 103
+        TF_VAR_listener_rule_priority: 300
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((prod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((prod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*"]
+        TF_VAR_auth_unauth_action: 'deny'
       config:
         platform: linux
         image_resource:
@@ -2307,7 +2314,7 @@ jobs:
         TF_VAR_service_name: 'author'
         TF_VAR_container_name: 'eq-author'
         TF_VAR_container_port: 3000
-        TF_VAR_listener_rule_priority: 102
+        TF_VAR_listener_rule_priority: 400
         TF_VAR_healthcheck_path: '/status.json'
         TF_VAR_healthcheck_grace_period_seconds: 120
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
@@ -2318,6 +2325,7 @@ jobs:
         TF_VAR_launch_type: 'FARGATE'
         TF_VAR_cpu_units: '0.25 vCPU'
         TF_VAR_memory_units: '0.5GB'
+        TF_VAR_auth_unauth_action: 'authenticate'
       config:
         platform: linux
         image_resource:
@@ -2346,7 +2354,7 @@ jobs:
 
               terraform plan \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }, {\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((prod_author_fullstory_org))\"}, {\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((prod_author_sentry_dns))\"}"'
+              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }, {\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((prod_author_fullstory_org))\"}, {\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((prod_author_sentry_dns))\"}"'
 
     - task: Deploy Schema Validator
       params:
@@ -2361,7 +2369,7 @@ jobs:
         TF_VAR_service_name: 'schema-validator'
         TF_VAR_container_name: 'eq-schema-validator'
         TF_VAR_container_port: 5000
-        TF_VAR_listener_rule_priority: 500
+        TF_VAR_listener_rule_priority: 600
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
@@ -2409,7 +2417,7 @@ jobs:
         TF_VAR_service_name: 'publisher'
         TF_VAR_container_name: 'eq-publisher'
         TF_VAR_container_port: 9000
-        TF_VAR_listener_rule_priority: 104
+        TF_VAR_listener_rule_priority: 500
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
@@ -2721,16 +2729,19 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{prod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{prod_author_aws_alb_external_listener_arn}}
+        TF_VAR_dns_record_name: 'prod-author.prod.eq.ons.digital'
         TF_VAR_service_name: 'author-api'
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
-        TF_VAR_listener_rule_priority: 103
+        TF_VAR_listener_rule_priority: 300
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((prod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((prod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*"]
+        TF_VAR_auth_unauth_action: 'deny'
       config:
         platform: linux
         image_resource:
@@ -2774,7 +2785,7 @@ jobs:
         TF_VAR_service_name: 'author'
         TF_VAR_container_name: 'eq-author'
         TF_VAR_container_port: 3000
-        TF_VAR_listener_rule_priority: 102
+        TF_VAR_listener_rule_priority: 400
         TF_VAR_healthcheck_path: '/status.json'
         TF_VAR_healthcheck_grace_period_seconds: 120
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
@@ -2785,6 +2796,7 @@ jobs:
         TF_VAR_launch_type: 'FARGATE'
         TF_VAR_cpu_units: '0.25 vCPU'
         TF_VAR_memory_units: '0.5GB'
+        TF_VAR_auth_unauth_action: 'authenticate'
       config:
         platform: linux
         image_resource:
@@ -2813,7 +2825,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }"'
+              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }"'
 
     - task: Deploy Schema Validator
       params:
@@ -2828,7 +2840,7 @@ jobs:
         TF_VAR_service_name: 'schema-validator'
         TF_VAR_container_name: 'eq-schema-validator'
         TF_VAR_container_port: 5000
-        TF_VAR_listener_rule_priority: 500
+        TF_VAR_listener_rule_priority: 600
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
@@ -2876,7 +2888,7 @@ jobs:
         TF_VAR_service_name: 'publisher'
         TF_VAR_container_name: 'eq-publisher'
         TF_VAR_container_port: 9000
-        TF_VAR_listener_rule_priority: 104
+        TF_VAR_listener_rule_priority: 500
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'

@@ -571,7 +571,7 @@ jobs:
         - -exc
         - |
           author_api_tag=$(cat eq-author-app/.git/HEAD | xargs echo -n)
-          while [[ "$(curl -s https://staging-author-api.dev.eq.ons.digital/status)" != *"$author_api_tag"* ]]; do sleep 5; done
+          while [[ "$(curl -s https://staging-author.dev.eq.ons.digital/status)" != *"$author_api_tag"* ]]; do sleep 5; done
     on_failure:
       put: slack-alert
       params:
@@ -815,7 +815,7 @@ jobs:
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-launcher"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$survey_launcher_tag \
-          -var 'container_environment_variables="{\"name\": \"JWT_ENCRYPTION_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-encryption-sr-public-key.pem\"},{\"name\": \"JWT_SIGNING_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-signing-rrm-private-key.pem\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets\"},{\"name\": \"SURVEY_RUNNER_URL\",\"value\": \"https://preprod-new-surveys.eq.ons.digital\"},{\"name\": \"SCHEMA_VALIDATOR_URL\",\"value\": \"https://preprod-schema-validator.eq.ons.digital\"}"' \
+          -var 'container_environment_variables="{\"name\": \"JWT_ENCRYPTION_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-encryption-sr-public-key.pem\"},{\"name\": \"JWT_SIGNING_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-signing-rrm-private-key.pem\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets\"},{\"name\": \"SURVEY_RUNNER_URL\",\"value\": \"https://eqtest.onsdigital.uk\"},{\"name\": \"SCHEMA_VALIDATOR_URL\",\"value\": \"https://preprod-schema-validator.eq.ons.digital\"}"' \
           -var 'task_iam_policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Action\":[\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::preprod-secrets*\"}]}"'
 
   - task: Deploy Address Lookup API
