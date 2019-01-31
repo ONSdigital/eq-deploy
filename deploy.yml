@@ -535,6 +535,7 @@ jobs:
       TF_VAR_task_has_iam_policy: true
       TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
       TF_VAR_healthcheck_path: '/status'
+      TF_VAR_aws_alb_use_host_header: false
     config:
       platform: linux
       image_resource:
@@ -582,6 +583,7 @@ jobs:
       TF_VAR_listener_rule_priority: 5
       TF_VAR_alb_listener_path_pattern: '/s/*'
       TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+      TF_VAR_aws_alb_use_host_header: false
     config:
       platform: linux
       image_resource:
@@ -946,6 +948,7 @@ jobs:
       TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
       TF_VAR_healthcheck_path: '/status'
       TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
+      TF_VAR_aws_alb_use_host_header: false
     config:
       platform: linux
       image_resource:
@@ -995,6 +998,7 @@ jobs:
       TF_VAR_alb_listener_path_pattern: '/s/*'
       TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
       TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
+      TF_VAR_aws_alb_use_host_header: false
     config:
       platform: linux
       image_resource:
@@ -1337,6 +1341,7 @@ jobs:
       TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
       TF_VAR_healthcheck_path: '/status'
       TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
+      TF_VAR_aws_alb_use_host_header: false
     config:
       platform: linux
       image_resource:
@@ -1385,6 +1390,7 @@ jobs:
       TF_VAR_alb_listener_path_pattern: '/s/*'
       TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
       TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
+      TF_VAR_aws_alb_use_host_header: false
     config:
       platform: linux
       image_resource:
