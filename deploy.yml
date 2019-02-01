@@ -1643,14 +1643,6 @@ jobs:
         TF_VAR_aws_account_id: '((preprod_aws_account_id))'
         TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
-        TF_VAR_submitted_responses_min_read_capacity: 1
-        TF_VAR_submitted_responses_min_write_capacity: 1
-        TF_VAR_questionnaire_state_min_read_capacity: 5
-        TF_VAR_questionnaire_state_min_write_capacity: 5
-        TF_VAR_eq_session_min_read_capacity: 5
-        TF_VAR_eq_session_min_write_capacity: 5
-        TF_VAR_used_jti_claim_min_read_capacity: 1
-        TF_VAR_used_jti_claim_min_write_capacity: 1
       config:
         platform: linux
         image_resource:
@@ -1695,7 +1687,7 @@ jobs:
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
-        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*"]
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
         TF_VAR_auth_unauth_action: 'deny'
       config:
         platform: linux
@@ -1875,7 +1867,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://preprod-author-api.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital/validate\" }"'
+              -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://preprod-author.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital/validate\" }"'
     - task: Deploy Author Survey Runner
       params:
         TF_VAR_env: 'preprod'
@@ -1969,7 +1961,7 @@ jobs:
             - -exc
             - |
               author_tag=$(cat eq-author-app-release/tag)
-              while [[ "$(curl -s https://preprod-author-api.eq.ons.digital/status)" != *"$author_tag"* ]]; do sleep 5; done
+              while [[ "$(curl -s https://preprod-author.eq.ons.digital/status)" != *"$author_tag"* ]]; do sleep 5; done
       on_failure:
         put: slack-alert
         params:
@@ -2222,14 +2214,6 @@ jobs:
         TF_VAR_aws_account_id: '((prod_aws_account_id))'
         TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
         TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
-        TF_VAR_submitted_responses_min_read_capacity: 1
-        TF_VAR_submitted_responses_min_write_capacity: 1
-        TF_VAR_questionnaire_state_min_read_capacity: 5
-        TF_VAR_questionnaire_state_min_write_capacity: 5
-        TF_VAR_eq_session_min_read_capacity: 5
-        TF_VAR_eq_session_min_write_capacity: 5
-        TF_VAR_used_jti_claim_min_read_capacity: 1
-        TF_VAR_used_jti_claim_min_write_capacity: 1
       config:
         platform: linux
         image_resource:
@@ -2275,7 +2259,7 @@ jobs:
         TF_VAR_ecs_subnet_ids: '((prod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((prod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
-        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*"]
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
         TF_VAR_auth_unauth_action: 'deny'
       config:
         platform: linux
@@ -2360,7 +2344,7 @@ jobs:
 
               terraform plan \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }, {\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((prod_author_fullstory_org))\"}, {\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((prod_author_sentry_dns))\"}"'
+              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }, {\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((prod_author_fullstory_org))\"}, {\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((prod_author_sentry_dns))\"}"'
 
     - task: Deploy Schema Validator
       params:
@@ -2458,7 +2442,7 @@ jobs:
 
               terraform plan \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital/validate\" }"'
+              -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://prod-author.prod.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital/validate\" }"'
 
     - task: Deploy Author Survey Runner
       params:
@@ -2693,14 +2677,6 @@ jobs:
         TF_VAR_aws_account_id: '((prod_aws_account_id))'
         TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
         TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
-        TF_VAR_submitted_responses_min_read_capacity: 1
-        TF_VAR_submitted_responses_min_write_capacity: 1
-        TF_VAR_questionnaire_state_min_read_capacity: 5
-        TF_VAR_questionnaire_state_min_write_capacity: 5
-        TF_VAR_eq_session_min_read_capacity: 5
-        TF_VAR_eq_session_min_write_capacity: 5
-        TF_VAR_used_jti_claim_min_read_capacity: 1
-        TF_VAR_used_jti_claim_min_write_capacity: 1
       config:
         platform: linux
         image_resource:
@@ -2746,7 +2722,7 @@ jobs:
         TF_VAR_ecs_subnet_ids: '((prod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((prod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
-        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*"]
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
         TF_VAR_auth_unauth_action: 'deny'
       config:
         platform: linux
@@ -2831,7 +2807,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }"'
+              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }"'
 
     - task: Deploy Schema Validator
       params:
@@ -2929,7 +2905,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://prod-author-api.prod.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital/validate\" }"'
+              -var 'container_environment_variables="{ \"name\": \"EQ_AUTHOR_API_URL\", \"value\": \"https://prod-author.prod.eq.ons.digital/graphql\" },{ \"name\": \"EQ_SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital/validate\" }"'
 
     - task: Deploy Author Survey Runner
       params:
