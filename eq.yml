@@ -242,48 +242,14 @@ jobs:
     get_params:
       skip_download: true
 
-
 - name: build-go-launch-a-survey
   public: true
   plan:
   - get: go-launch-a-survey
     trigger: true
-  - task: Build
-    privileged: true
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-golang-build
-      inputs:
-      - name: go-launch-a-survey
-      outputs:
-      - name: go-launch-a-survey-compiled
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          service docker start
-
-          build_dir=$(pwd)
-          export GOPATH=$HOME/gopath
-          export PATH=$HOME/gopath/bin:$PATH
-          mkdir -p $HOME/gopath/src/github.com/ONSdigital/go-launch-a-survey
-          cp -R go-launch-a-survey/ $HOME/gopath/src/github.com/ONSdigital/
-          cd $HOME/gopath/src/github.com/ONSdigital/go-launch-a-survey
-
-          go get -u github.com/golang/dep/cmd/dep
-          dep ensure
-          docker run --rm -v $(pwd):/src centurylink/golang-builder
-
-          service docker stop
-
-          cp -R . $build_dir/go-launch-a-survey-compiled
   - put: go-launch-a-survey-image
     params:
-      build: go-launch-a-survey-compiled
+      build: go-launch-a-survey
       tag: go-launch-a-survey/.git/HEAD
     get_params:
       skip_download: true
