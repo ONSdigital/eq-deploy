@@ -411,7 +411,7 @@ jobs:
       TF_VAR_database_user: '((preprod_database_user))'
       TF_VAR_database_password: '((preprod_database_password))'
       TF_VAR_database_instance_class: 'db.r3.xlarge'
-      TF_VAR_database_engine_version: '9.4.15'
+      TF_VAR_database_engine_version: '9.4'
       TF_VAR_database_apply_immediately: true
       TF_VAR_database_allocated_storage: 640
       TF_VAR_snapshot_identifier: '((preprod_database_snapshot_identifier))'
@@ -823,7 +823,7 @@ jobs:
       TF_VAR_database_user: '((prod_database_user))'
       TF_VAR_database_password: '((prod_database_password))'
       TF_VAR_database_instance_class: 'db.r3.xlarge'
-      TF_VAR_database_engine_version: '9.4.15'
+      TF_VAR_database_engine_version: '9.4'
       TF_VAR_database_apply_immediately: false
       TF_VAR_database_allocated_storage: 640
       TF_VAR_snapshot_identifier: '((prod_database_snapshot_identifier))'
@@ -1216,7 +1216,7 @@ jobs:
       TF_VAR_database_user: '((prod_database_user))'
       TF_VAR_database_password: '((prod_database_password))'
       TF_VAR_database_instance_class: 'db.r3.xlarge'
-      TF_VAR_database_engine_version: '9.4.15'
+      TF_VAR_database_engine_version: '9.4'
       TF_VAR_database_apply_immediately: false
       TF_VAR_database_allocated_storage: 640
       TF_VAR_snapshot_identifier: '((prod_database_snapshot_identifier))'
