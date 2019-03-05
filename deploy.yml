@@ -1771,7 +1771,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://preprod-author.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" }, {\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((preprod_author_fullstory_org))\"}, {\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((preprod_author_sentry_dns))\"}"'
+              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://preprod-author.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((preprod_author_firebase_api_key))\" }, {\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((preprod_author_fullstory_org))\"}, {\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((preprod_author_sentry_dns))\"}, {\"name\": \"REACT_APP_HOT_JAR_ID\", \"value\": \"((preprod_author_hot_jar_id))\"}"'
 
     - task: Deploy Schema Validator
       params:
