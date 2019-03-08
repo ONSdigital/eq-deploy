@@ -511,7 +511,7 @@ jobs:
         - -exc
         - |
           survey_runner_tag=$(cat eq-survey-runner/.git/HEAD | xargs echo -n)
-          while [[ "$(curl -s https://staging-new-surveys.dev.eq.ons.digital/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
+          while [[ "$(curl -s https://staging-surveys.dev.eq.ons.digital/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
     on_failure:
       put: slack-alert
       params:
