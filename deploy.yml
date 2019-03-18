@@ -4,12 +4,12 @@ resource_types:
   source:
     repository: cfcommunity/slack-notification-resource
     tag: latest
-    
+
 - name: github-release-latest
-    type: docker-image
-    source:
-      repository: concourse/github-release-resource
-      tag: 1.1.0
+  type: docker-image
+  source:
+    repository: concourse/github-release-resource
+    tag: 1.1.0
 
 resources:
 - name: eq-survey-runner-release
