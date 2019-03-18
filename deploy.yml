@@ -4,53 +4,60 @@ resource_types:
   source:
     repository: cfcommunity/slack-notification-resource
     tag: latest
+    
+- name: github-release-latest
+    type: docker-image
+    source:
+      repository: concourse/github-release-resource
+      tag: 1.1.0
 
 resources:
 - name: eq-survey-runner-release
-  type: github-release
+  type: github-release-latest
   source:
     owner: ONSdigital
     repository: eq-survey-runner
     access_token: ((github_access_token))
     tag_filter: "v2.*"
+    order_by: time
 
 - name: eq-author-app-release
-  type: github-release
+  type: github-release-latest
   source:
     owner: ONSdigital
     repository: eq-author-app
     access_token: ((github_access_token))
 
 - name: eq-schema-validator-release
-  type: github-release
+  type: github-release-latest
   source:
     owner: ONSdigital
     repository: eq-schema-validator
     access_token: ((github_access_token))
 
 - name: eq-terraform-release
-  type: github-release
+  type: github-release-latest
   source:
     owner: ONSdigital
     repository: eq-terraform
     access_token: ((github_access_token))
 
 - name: eq-terraform-dynamodb-release
-  type: github-release
+  type: github-release-latest
   source:
     owner: ONSdigital
     repository: eq-terraform-dynamodb
     access_token: ((github_access_token))
 
 - name: eq-terraform-ecs-release
-  type: github-release
+  type: github-release-latest
   source:
     owner: ONSdigital
     repository: eq-terraform-ecs
     access_token: ((github_access_token))
 
 - name: eq-ecs-deploy-release
-  type: github-release
+  type: github-release-latest
   source:
     owner: ONSdigital
     repository: eq-ecs-deploy
