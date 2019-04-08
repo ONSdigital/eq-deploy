@@ -49,6 +49,13 @@ resources:
     repository: eq-terraform-dynamodb
     access_token: ((github_access_token))
 
+- name: eq-author-terraform-dynamodb-release
+  type: github-release
+  source:
+    owner: ONSdigital
+    repository: eq-author-terraform-dynamodb
+    access_token: ((github_access_token))
+
 - name: eq-terraform-ecs-release
   type: github-release-latest
   source:
@@ -1487,6 +1494,10 @@ jobs:
       trigger: true
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-dynamodb-release
+      trigger: true
+      params:
+        include_source_tarball: true
     - get: eq-terraform-ecs-release
       trigger: true
       params:
@@ -1675,6 +1686,36 @@ jobs:
               terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-survey-runner-dynamodb" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
               terraform apply
 
+    - task: Deploy Author DynamoDB Tables
+      params:
+        TF_VAR_env: 'preprod-author'
+        TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+        inputs:
+          - name: eq-author-terraform-dynamodb-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-author-terraform-dynamodb-release
+
+              mkdir eq-author-terraform-dynamodb
+              tar -xzf source.tar.gz -C eq-author-terraform-dynamodb --strip-components=1
+
+              cd eq-author-terraform-dynamodb
+              tfenv install
+
+              terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-dynamodb" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+              terraform apply
+
     - task: Deploy Author API
       params:
         TF_VAR_env: 'preprod'
@@ -1725,7 +1766,8 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}"'
+              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_version_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}"' \
+              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_version_table_arn))\"}]}"'
 
     - task: Deploy Author
       params:
