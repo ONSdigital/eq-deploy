@@ -1738,6 +1738,7 @@ jobs:
         TF_VAR_launch_type: 'FARGATE'
         TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
         TF_VAR_auth_unauth_action: 'deny'
+        TF_VAR_task_has_iam_policy: true
       config:
         platform: linux
         image_resource:
@@ -1767,7 +1768,7 @@ jobs:
               terraform apply \
               -var container_tag=$release_version \
               -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_version_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}"' \
-              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_version_table_arn))\"}]}"'
+              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_version_table_arn))\"}]}"'
 
     - task: Deploy Author
       params:
@@ -2099,6 +2100,11 @@ jobs:
       trigger: true
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-dynamodb-release
+      passed: [PreProd-Author-Deploy]
+      trigger: true
+      params:
+        include_source_tarball: true
     - get: eq-terraform-ecs-release
       passed: [PreProd-Author-Deploy]
       trigger: true
@@ -2288,6 +2294,36 @@ jobs:
               terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-survey-runner-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform plan
 
+    - task: Deploy Author DynamoDB Tables
+      params:
+        TF_VAR_env: 'prod-author'
+        TF_VAR_aws_account_id: '((prod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+        TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+        inputs:
+          - name: eq-author-terraform-dynamodb-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-author-terraform-dynamodb-release
+
+              mkdir eq-author-terraform-dynamodb
+              tar -xzf source.tar.gz -C eq-author-terraform-dynamodb --strip-components=1
+
+              cd eq-author-terraform-dynamodb
+              tfenv install
+
+              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+              terraform plan
+
     - task: Deploy Author API
       params:
         TF_VAR_env: 'prod'
@@ -2311,6 +2347,7 @@ jobs:
         TF_VAR_launch_type: 'FARGATE'
         TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
         TF_VAR_auth_unauth_action: 'deny'
+        TF_VAR_task_has_iam_policy: true
       config:
         platform: linux
         image_resource:
@@ -2339,7 +2376,8 @@ jobs:
 
               terraform plan \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\"}"'
+              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_version_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\"}"' \
+              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\"],\"Resource\": \"((prod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_questionnaire_version_table_arn))\"}]}"'
 
     - task: Deploy Author
       params:
@@ -2564,6 +2602,10 @@ jobs:
       passed: [Prod-Author-Deploy-Plan]
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-dynamodb-release
+      passed: [Prod-Author-Deploy-Plan]
+      params:
+        include_source_tarball: true
     - get: eq-terraform-ecs-release
       passed: [Prod-Author-Deploy-Plan]
       params:
@@ -2751,6 +2793,36 @@ jobs:
               terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-survey-runner-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform apply
 
+    - task: Deploy Author DynamoDB Tables
+      params:
+        TF_VAR_env: 'prod-author'
+        TF_VAR_aws_account_id: '((prod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+        TF_VAR_slack_alert_sns_arn: '((prod_slack_alert_sns_arn))'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+        inputs:
+          - name: eq-author-terraform-dynamodb-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-author-terraform-dynamodb-release
+
+              mkdir eq-author-terraform-dynamodb
+              tar -xzf source.tar.gz -C eq-author-terraform-dynamodb --strip-components=1
+
+              cd eq-author-terraform-dynamodb
+              tfenv install
+
+              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+              terraform apply
+
     - task: Deploy Author API
       params:
         TF_VAR_env: 'prod'
@@ -2774,6 +2846,7 @@ jobs:
         TF_VAR_launch_type: 'FARGATE'
         TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
         TF_VAR_auth_unauth_action: 'deny'
+        TF_VAR_task_has_iam_policy: true
       config:
         platform: linux
         image_resource:
@@ -2802,7 +2875,8 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\"}"'
+              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_version_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\"}"' \
+              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\"],\"Resource\": \"((prod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_questionnaire_version_table_arn))\"}]}"'
 
     - task: Deploy Author
       params:
