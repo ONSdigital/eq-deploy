@@ -484,9 +484,9 @@ jobs:
           echo "eu-west-1" | terraform apply \
             -var survey_runner_tag=$survey_runner_tag \
             -var author_tag=$eq_author_tag \
-            -var schema_validator_tag=$eq_schema_validator_tag
-	    -var author_gtm_id="((author_google_tag_manager_id))" \
-	    -var author_gtm_env_id="((staging_author_google_tag_manager_environment_id))"
+            -var schema_validator_tag=$eq_schema_validator_tag \
+            -var author_gtm_id="((author_google_tag_manager_id))" \
+            -var author_gtm_env_id="((staging_author_google_tag_manager_environment_id))"
     on_failure:
       put: slack-alert
       params:
