@@ -2931,7 +2931,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author.prod.eq.ons.digital/launch\" },{ \"name\": \"REACT_APP_USE_FULLSTORY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_USE_SENTRY\", \"value\": \"true\" },{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }"'
+              -var 'container_environment_variables="{ \"name\": \"REACT_APP_API_URL\", \"value\": \"/graphql\" },{ \"name\": \"REACT_APP_LAUNCH_URL\", \"value\": \"https://prod-author.prod.eq.ons.digital/launch\" },{\"name\": \"REACT_APP_FULLSTORY_ORG\", \"value\": \"((prod_author_fullstory_org))\"},{\"name\": \"REACT_APP_SENTRY_DSN\", \"value\": \"((prod_author_sentry_dns))\"},{ \"name\": \"REACT_APP_FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\" },{ \"name\": \"REACT_APP_FIREBASE_API_KEY\", \"value\": \"((prod_author_firebase_api_key))\" }"'
 
     - task: Deploy Schema Validator
       params:
