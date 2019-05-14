@@ -456,6 +456,7 @@ jobs:
       TF_VAR_author_registry: {{docker_registry}}
       TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
       TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+      TF_VAR_author_api_enable_import: 'true'
     config:
       platform: linux
       image_resource:
@@ -486,8 +487,7 @@ jobs:
             -var author_tag=$eq_author_tag \
             -var schema_validator_tag=$eq_schema_validator_tag \
             -var author_gtm_id="((author_google_tag_manager_id))" \
-            -var author_gtm_env_id="((staging_author_google_tag_manager_environment_id))" \
-            -var author_api_enable_import="true"
+            -var author_gtm_env_id="((staging_author_google_tag_manager_environment_id))"
     on_failure:
       put: slack-alert
       params:
