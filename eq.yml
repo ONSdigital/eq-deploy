@@ -393,6 +393,7 @@ jobs:
   - task: Deploy Terraform
     params:
       ANSIBLE_HOST_KEY_CHECKING: False
+      AWS_REGION: 'eu-west-1'
       TF_VAR_env: 'staging'
       TF_VAR_aws_account_id: '((dev_aws_account_id))'
       TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
@@ -437,7 +438,7 @@ jobs:
           eq_lookup_api_tag=$(cat ../eq-lookup-api/.git/HEAD | xargs echo -n)
 
           terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
-          echo "eu-west-1" | terraform apply \
+          terraform apply \
             -var survey_runner_tag=$survey_runner_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
@@ -445,6 +446,7 @@ jobs:
             -var suggest_api_tag=$eq_lookup_api_tag
   - task: Deploy Author Terraform
     params:
+      AWS_REGION: 'eu-west-1'
       TF_VAR_env: 'staging'
       TF_VAR_aws_account_id: '((dev_aws_account_id))'
       TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
@@ -481,7 +483,7 @@ jobs:
           eq_schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
 
           terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
-          echo "eu-west-1" | terraform apply \
+          terraform apply \
             -var survey_runner_tag=$survey_runner_tag \
             -var author_tag=$eq_author_tag \
             -var schema_validator_tag=$eq_schema_validator_tag \
