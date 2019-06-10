@@ -1736,7 +1736,7 @@ jobs:
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
-        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status", "/export*"]
         TF_VAR_auth_unauth_action: 'deny'
         TF_VAR_task_has_iam_policy: true
       config:
@@ -2345,7 +2345,7 @@ jobs:
         TF_VAR_ecs_subnet_ids: '((prod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((prod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
-        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status", "/export*"]
         TF_VAR_auth_unauth_action: 'deny'
         TF_VAR_task_has_iam_policy: true
       config:
@@ -2844,7 +2844,7 @@ jobs:
         TF_VAR_ecs_subnet_ids: '((prod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((prod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
-        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status"]
+        TF_VAR_alb_listener_path_patterns: ["/graphql*", "/launch*", "/status", "/export*"]
         TF_VAR_auth_unauth_action: 'deny'
         TF_VAR_task_has_iam_policy: true
       config:
