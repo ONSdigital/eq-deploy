@@ -487,6 +487,7 @@ jobs:
             -var schema_validator_tag=$eq_schema_validator_tag \
             -var author_gtm_id="((author_google_tag_manager_id))" \
             -var author_gtm_env_id="((staging_author_google_tag_manager_environment_id))" \
+            -var author_sentry_dsn="((author_sentry_dsn))" \
             -var author_api_enable_import="true"
     on_failure:
       put: slack-alert
