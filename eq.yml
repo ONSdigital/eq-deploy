@@ -488,7 +488,9 @@ jobs:
             -var author_gtm_id="((author_google_tag_manager_id))" \
             -var author_gtm_env_id="((staging_author_google_tag_manager_environment_id))" \
             -var author_sentry_dsn="((author_sentry_dsn))" \
-            -var author_api_enable_import="true"
+            -var author_api_enable_import="true" \
+            -var author_secrets_bucket_name="((staging_author_secrets_bucket_name))" \
+            -var author_firebase_service_account_key="((author_firebase_service_account_key))"
     on_failure:
       put: slack-alert
       params:
