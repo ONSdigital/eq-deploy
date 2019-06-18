@@ -1726,6 +1726,7 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{preprod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{preprod_author_aws_alb_external_listener_arn}}
+        TF_VAR_aws_alb_use_host_header: false
         TF_VAR_dns_record_name: 'preprod-author.eq.ons.digital'
         TF_VAR_service_name: 'author-api'
         TF_VAR_container_name: 'eq-author-api'
@@ -1780,10 +1781,11 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{preprod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{preprod_author_aws_alb_external_listener_arn}}
+        TF_VAR_aws_alb_use_host_header: false
         TF_VAR_service_name: 'author'
         TF_VAR_container_name: 'eq-author'
         TF_VAR_container_port: 3000
-        TF_VAR_listener_rule_priority: 400
+        TF_VAR_listener_rule_priority: 900
         TF_VAR_healthcheck_path: '/status.json'
         TF_VAR_healthcheck_grace_period_seconds: 120
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
@@ -2334,6 +2336,7 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{prod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{prod_author_aws_alb_external_listener_arn}}
+        TF_VAR_aws_alb_use_host_header: false
         TF_VAR_dns_record_name: 'prod-author.prod.eq.ons.digital'
         TF_VAR_service_name: 'author-api'
         TF_VAR_container_name: 'eq-author-api'
@@ -2389,10 +2392,11 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{prod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{prod_author_aws_alb_external_listener_arn}}
+        TF_VAR_aws_alb_use_host_header: false
         TF_VAR_service_name: 'author'
         TF_VAR_container_name: 'eq-author'
         TF_VAR_container_port: 3000
-        TF_VAR_listener_rule_priority: 400
+        TF_VAR_listener_rule_priority: 900
         TF_VAR_healthcheck_path: '/status.json'
         TF_VAR_healthcheck_grace_period_seconds: 120
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
@@ -2833,6 +2837,7 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{prod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{prod_author_aws_alb_external_listener_arn}}
+        TF_VAR_aws_alb_use_host_header: false
         TF_VAR_dns_record_name: 'prod-author.prod.eq.ons.digital'
         TF_VAR_service_name: 'author-api'
         TF_VAR_container_name: 'eq-author-api'
@@ -2888,10 +2893,11 @@ jobs:
         TF_VAR_docker_registry: {{docker_registry}}
         TF_VAR_aws_alb_arn: {{prod_author_aws_external_alb_arn}}
         TF_VAR_aws_alb_listener_arn: {{prod_author_aws_alb_external_listener_arn}}
+        TF_VAR_aws_alb_use_host_header: false
         TF_VAR_service_name: 'author'
         TF_VAR_container_name: 'eq-author'
         TF_VAR_container_port: 3000
-        TF_VAR_listener_rule_priority: 400
+        TF_VAR_listener_rule_priority: 900
         TF_VAR_healthcheck_path: '/status.json'
         TF_VAR_healthcheck_grace_period_seconds: 120
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
