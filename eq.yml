@@ -442,7 +442,9 @@ jobs:
             -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var schema_validator_tag=$eq_schema_validator_tag \
-            -var suggest_api_tag=$eq_lookup_api_tag
+            -var suggest_api_tag=$eq_lookup_api_tag \
+            -var google_tag_manager_id="((runner_google_tag_manager_id))" \
+            -var google_tag_manager_environment_id="((staging_runner_google_tag_manager_environment_id))"
   - task: Deploy Author Terraform
     params:
       TF_VAR_env: 'staging'
