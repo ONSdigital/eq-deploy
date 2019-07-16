@@ -1734,7 +1734,7 @@ jobs:
         TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
         TF_VAR_vpc_id: '((preprod_author_vpc_id))'
         TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
-        TF_VAR_database_subnet_ids: ((preprod_database_subnet_ids))
+        TF_VAR_database_subnet_ids: ((preprod_author_database_subnet_ids))
       config:
         platform: linux
         image_resource:
