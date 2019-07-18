@@ -2398,7 +2398,7 @@ jobs:
               cd eq-author-terraform-redis
               tfenv install
 
-              terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-redis" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-redis" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform plan
 
     - task: Deploy Author API
@@ -2931,7 +2931,7 @@ jobs:
               cd eq-author-terraform-redis
               tfenv install
 
-              terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-redis" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-redis" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform apply
 
     - task: Deploy Author API
