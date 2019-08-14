@@ -2150,6 +2150,11 @@ jobs:
       trigger: true
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-redis-release
+      passed: [PreProd-Author-Deploy]
+      trigger: true
+      params:
+        include_source_tarball: true
     - get: eq-terraform-ecs-release
       passed: [PreProd-Author-Deploy]
       trigger: true
@@ -2678,6 +2683,10 @@ jobs:
       params:
         include_source_tarball: true
     - get: eq-terraform-dynamodb-release
+      passed: [Prod-Author-Deploy-Plan]
+      params:
+        include_source_tarball: true
+    - get: eq-author-terraform-redis-release
       passed: [Prod-Author-Deploy-Plan]
       params:
         include_source_tarball: true
