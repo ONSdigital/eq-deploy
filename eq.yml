@@ -265,7 +265,7 @@ jobs:
         type: docker-image
         source:
           repository: node
-          tag: lts-alpine
+          tag: latest
       inputs:
       - name: eq-survey-register
       outputs:
@@ -277,7 +277,6 @@ jobs:
         - |
           pushd eq-survey-register
           export EQ_AUTHOR_VERSION=$(cat .git/HEAD | xargs echo -n)
-          echo "{\"APPLICATION_VERSION\":\""$EQ_AUTHOR_VERSION"\"}" > ../build_args/args
           yarn install --frozen-lockfile
           popd
           cp -R eq-survey-register/* built-eq-survey-register
@@ -459,6 +458,7 @@ jobs:
       inputs:
       - name: eq-author-terraform
       - name: eq-survey-runner
+      - name: go-launch-a-survey
       - name: eq-author-app
       - name: eq-schema-validator
       - name: eq-survey-register
@@ -473,12 +473,16 @@ jobs:
 
           survey_runner_tag=$(cat ../eq-survey-runner/.git/HEAD | xargs echo -n)
           eq_author_tag=$(cat ../eq-author-app/.git/HEAD | xargs echo -n)
+          eq_survey_register_tag=$(cat ../eq-survey-register/.git/HEAD | xargs echo -n)
+          go_launch_a_survey_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
           eq_schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
 
           terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
           echo "eu-west-1" | terraform apply \
             -var survey_runner_tag=$survey_runner_tag \
             -var author_tag=$eq_author_tag \
+            -var register_tag=$eq_survey_register_tag \
+            -var survey_launcher_tag=$go_launch_a_survey_tag \
             -var schema_validator_tag=$eq_schema_validator_tag \
             -var author_gtm_id="((author_google_tag_manager_id))" \
             -var author_gtm_auth="((staging_author_google_tag_manager_auth))" \
@@ -574,7 +578,7 @@ jobs:
             color: danger
             title: Concourse Build $BUILD_ID
             title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
- - task: Wait for Deployed Publisher
+  - task: Wait for Deployed Publisher
     timeout: 10m
     config:
       platform: linux
@@ -601,31 +605,31 @@ jobs:
             title: Concourse Build $BUILD_ID
             title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
   - task: Wait for Deployed Survey register
-   timeout: 10m
-   config:
-     platform: linux
-     image_resource:
-       type: docker-image
-       source:
-         repository: onsdigital/eq-terraform-build
-     inputs:
-     - name: eq-survey-register
-     run:
-       path: bash
-       args:
-       - -exc
-       - |
-         survey_register_tag=$(cat eq-survey-register/.git/HEAD | xargs echo -n)
-         while [[ "$(curl -s https://staging-survey-register.dev.eq.ons.digital/status)" != *"$survey_register_tag"* ]]; do sleep 5; done
-   on_failure:
-     put: slack-alert
-     params:
-       channel: '#eq-author'
-       attachments:
-         - pretext: Staging Survey register Deploy Failed
-           color: danger
-           title: Concourse Build $BUILD_ID
-           title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-survey-register
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          survey_register_tag=$(cat eq-survey-register/.git/HEAD | xargs echo -n)
+          while [[ "$(curl -s https://staging-author-survey-register.dev.eq.ons.digital/status)" != *"OK"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-author'
+        attachments:
+          - pretext: Staging Survey register Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
 
 - name: smoke-tests
   public: true
