@@ -28,6 +28,20 @@ resources:
     repository: eq-author-app
     access_token: ((github_access_token))
 
+- name: eq-survey-register-release
+  type: github-release-latest
+  source:
+    owner: ONSdigital
+    repository: eq-survey-register
+    access_token: ((github_access_token))
+
+- name: go-launch-a-survey-release
+  type: github-release-latest
+  source:
+    owner: ONSdigital
+    repository: go-launch-a-survey
+    access_token: ((github_access_token))
+
 - name: eq-schema-validator-release
   type: github-release-latest
   source:
@@ -106,6 +120,16 @@ resources:
   type: docker-image
   source:
     repository: ((docker_registry))/eq-schema-validator
+
+- name: eq-survey-register-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-survey-register
+
+- name: go-launch-a-survey-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/go-launch-a-survey
 
 - name: slack-alert
   type: slack-notification
@@ -255,6 +279,82 @@ jobs:
     params:
       build: compiled-eq-schema-validator
       tag: eq-schema-validator-release/tag
+    get_params:
+      skip_download: true
+
+- name: build-eq-survey-register
+  public: true
+  plan:
+  - get: eq-survey-register-release
+    params:
+      include_source_tarball: true
+    trigger: true
+  - task: build survey register
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: node
+          tag: latest
+      inputs:
+      - name: eq-survey-register-release
+      outputs:
+      - name: built-eq-survey-register
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-survey-register-release
+
+          mkdir eq-survey-register
+          tar -xzf source.tar.gz -C eq-survey-register --strip-components=1
+          pushd eq-survey-register
+          popd
+          cp -R eq-survey-register/* ../built-eq-survey-register
+
+  - put: eq-survey-register-image
+    params:
+      build: built-eq-survey-register
+      tag: eq-survey-register-release/tag
+    get_params:
+      skip_download: true
+
+- name: build-go-launch-a-survey
+  public: true
+  plan:
+  - get: go-launch-a-survey-release
+    params:
+      include_source_tarball: true
+    trigger: true
+  - task: build author launcher
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: bash
+          tag: latest
+      inputs:
+      - name: go-launch-a-survey-release
+      outputs:
+      - name: built-go-launch-a-survey
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd go-launch-a-survey-release
+          mkdir go-launch-a-survey
+          tar -xzf source.tar.gz -C go-launch-a-survey --strip-components=1
+          pushd go-launch-a-survey
+          popd
+          cp -R go-launch-a-survey/* ../built-go-launch-a-survey
+  - put: go-launch-a-survey-image
+    params:
+      build: built-go-launch-a-survey
+      tag: go-launch-a-survey-release/tag
     get_params:
       skip_download: true
 
@@ -1517,6 +1617,12 @@ jobs:
       trigger: true
       params:
         include_source_tarball: true
+    - get: eq-survey-register-release
+      passed: [build-eq-survey-register]
+      trigger: true
+    - get: go-launch-a-survey-release
+      passed: [build-go-launch-a-survey]
+      trigger: true
     - task: Deploy Author VPC
       params:
         TF_VAR_env: 'preprod'
@@ -1774,7 +1880,7 @@ jobs:
         TF_VAR_service_name: 'author-api'
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
-        TF_VAR_listener_rule_priority: 300
+        TF_VAR_listener_rule_priority: 800
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
@@ -1811,9 +1917,59 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_version_table_name))\"},  {\"name\": \"DYNAMO_USER_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_user_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}, {\"name\": \"FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\"}, {\"name\": \"REDIS_PORT\", \"value\": \"((preprod_author_redis_port))\"}, {\"name\": \"REDIS_DOMAIN_NAME\", \"value\": \"((preprod_author_redis_domain_name))\"}"' \
+              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_version_table_name))\"},  {\"name\": \"DYNAMO_USER_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_user_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}, {\"name\": \"FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\"}, {\"name\": \"REDIS_PORT\", \"value\": \"((preprod_author_redis_port))\"}, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://preprod-author-survey-register.eq.ons.digital/submit/\" }, {\"name\": \"REDIS_DOMAIN_NAME\", \"value\": \"((preprod_author_redis_domain_name))\"}"' \
               -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_version_table_arn))\"},  {\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_users_table_arn))\"}]}"'
 
+    - task: Deploy Survey Register
+      params:
+        TF_VAR_env: 'preprod'
+        TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
+        TF_VAR_vpc_id: '((preprod_author_vpc_id))'
+        TF_VAR_ecs_cluster_name: 'preprod-eq-author'
+        TF_VAR_aws_alb_arn: {{preprod_author_aws_external_alb_arn}}
+        TF_VAR_aws_alb_listener_arn: {{preprod_author_aws_alb_external_listener_arn}}
+        TF_VAR_service_name: 'author-survey-register'
+        TF_VAR_listener_rule_priority: 550
+        TF_VAR_docker_registry: {{docker_registry}}
+        TF_VAR_container_name: 'eq-survey-register'
+        TF_VAR_container_port: 8080
+        TF_VAR_healthcheck_path: '/status'
+        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
+        TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
+        TF_VAR_launch_type: 'FARGATE'
+        TF_VAR_task_has_iam_policy: true
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+        inputs:
+          - name: eq-survey-register-release
+          - name: eq-ecs-deploy-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-ecs-deploy-release
+
+              mkdir eq-ecs-deploy
+              tar -xzf source.tar.gz -C eq-ecs-deploy --strip-components=1
+
+              cd eq-ecs-deploy
+              tfenv install
+
+              release_version=$(cat ../../eq-survey-register-release/tag)
+
+              terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-survey-register"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+
+              terraform apply \
+              -var container_tag=$release_version \
+              -var 'container_environment_variables="{ \"name\": \"DYNAMO_SURVEY_REGISTRY_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_survey_registry_table_name))\" }, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://preprod-author-survey-register.eq.ons.digital\" }, { \"name\": \"GO_QUICK_LAUNCHER_URL\", \"value\": \"https://preprod-author-launch.eq.ons.digital/quick-launch?url=\" }, { \"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\" }"' \
+              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_survey_registry_table_arn))\"}]}"'
     - task: Deploy Author
       params:
         TF_VAR_env: 'preprod'
@@ -1882,7 +2038,7 @@ jobs:
         TF_VAR_service_name: 'schema-validator'
         TF_VAR_container_name: 'eq-schema-validator'
         TF_VAR_container_port: 5000
-        TF_VAR_listener_rule_priority: 600
+        TF_VAR_listener_rule_priority: 450
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
@@ -1929,7 +2085,7 @@ jobs:
         TF_VAR_service_name: 'publisher'
         TF_VAR_container_name: 'eq-publisher'
         TF_VAR_container_port: 9000
-        TF_VAR_listener_rule_priority: 500
+        TF_VAR_listener_rule_priority: 300
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
@@ -1977,7 +2133,7 @@ jobs:
         TF_VAR_service_name: 'author-surveys'
         TF_VAR_container_name: 'eq-survey-runner'
         TF_VAR_container_port: 5000
-        TF_VAR_listener_rule_priority: 10
+        TF_VAR_listener_rule_priority: 200
         TF_VAR_task_has_iam_policy: true
         TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
         TF_VAR_healthcheck_path: '/status'
@@ -2013,6 +2169,55 @@ jobs:
               -var container_tag=$release_version \
               -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_ENABLED\",\"value\": \"False\"},{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"\"},{\"name\": \"SQLALCHEMY_DATABASE_URI\",\"value\": \"sqlite:////tmp/questionnaire.db\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"docker-keys.yml\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"docker-secrets.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://surveys.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"preprod-author-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"preprod-author-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"preprod-author-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"preprod-author-used-jti-claim\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_DYNAMO_WRITE\",\"value\": \"True\"}"' \
               -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((preprod_author_submitted_responses_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_author_questionnaire_state_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_author_eq_session_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\"],\"Resource\": \"((preprod_author_used_jti_claim_table_arn))\"}]}"'
+
+    - task: Deploy Author Survey launcher
+      params:
+        TF_VAR_env: 'preprod'
+        TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
+        TF_VAR_vpc_id: '((preprod_author_vpc_id))'
+        TF_VAR_ecs_cluster_name: 'preprod-eq-author'
+        TF_VAR_docker_registry: {{docker_registry}}
+        TF_VAR_aws_alb_arn: {{preprod_author_aws_external_alb_arn}}
+        TF_VAR_aws_alb_listener_arn: {{preprod_author_aws_alb_external_listener_arn}}
+        TF_VAR_service_name: 'author-launch'
+        TF_VAR_container_name: 'go-launch-a-survey'
+        TF_VAR_container_port: 8000
+        TF_VAR_listener_rule_priority: 700
+        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_healthcheck_path: '/status'
+        TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
+        TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
+        TF_VAR_launch_type: 'FARGATE'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+        inputs:
+          - name: go-launch-a-survey-release
+          - name: eq-ecs-deploy-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-ecs-deploy-release
+
+              mkdir eq-ecs-deploy
+              tar -xzf source.tar.gz -C eq-ecs-deploy --strip-components=1
+
+              cd eq-ecs-deploy
+              tfenv install
+
+              release_version=$(cat ../../go-launch-a-survey-release/tag)
+
+              terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-author-launch"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+
+              terraform apply \
+              -var container_tag=$release_version \
+              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"}"'
 
     - task: Wait for Deployed Author
       timeout: 10m
