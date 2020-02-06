@@ -2217,7 +2217,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"}"'
+              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"},{ \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://preprod-author-survey-register.prod.eq.ons.digital\" }"'
 
     - task: Wait for Deployed Author
       timeout: 10m
@@ -2968,7 +2968,7 @@ jobs:
               terraform init -backend-config="bucket="concourse-prod-terraform-state"" -backend-config="key="author-launch"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform plan \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"}"'
+              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"},{ \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital\" }"'
 
 
 - name: Prod-Author-Deploy
@@ -3601,4 +3601,4 @@ jobs:
               terraform init -backend-config="bucket="concourse-prod-terraform-state"" -backend-config="key="prod-author-launch"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"}"'
+              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"},{ \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital\" }"'
