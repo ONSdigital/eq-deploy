@@ -7,6 +7,6 @@ RUN git clone https://github.com/kamatama41/tfenv.git ~/.tfenv && \
     ln -s /root/.tfenv/bin/* /usr/local/bin
 
 RUN apt-get install -y software-properties-common && \
-    apt-add-repository ppa:ansible/ansible && \
+    apt-add-repository ppa:ansible/ansible-2.8 && \
     apt-get update && \
     apt-get install -y ansible
