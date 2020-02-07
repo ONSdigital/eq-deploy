@@ -1969,7 +1969,7 @@ jobs:
               terraform apply \
               -var container_tag=$release_version \
               -var 'container_environment_variables="{ \"name\": \"DYNAMO_SURVEY_REGISTRY_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_survey_registry_table_name))\" }, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://preprod-author-survey-register.eq.ons.digital\" }, { \"name\": \"GO_QUICK_LAUNCHER_URL\", \"value\": \"https://preprod-author-launch.eq.ons.digital/quick-launch?url=\" }, { \"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\" }"' \
-              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_survey_registry_table_arn))\"}]}"'
+              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": [\"((preprod_author_dynamo_survey_registry_table_arn))\", \"((preprod_author_dynamo_survey_registry_table_arn))/index/sortKey\"]}]}"'
     - task: Deploy Author
       params:
         TF_VAR_env: 'preprod'
@@ -2217,7 +2217,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"}"'
+              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://preprod-schema-validator.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"},{ \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://preprod-author-survey-register.prod.eq.ons.digital\" }"'
 
     - task: Wait for Deployed Author
       timeout: 10m
@@ -2718,7 +2718,7 @@ jobs:
               terraform plan \
               -var container_tag=$release_version \
               -var 'container_environment_variables="{ \"name\": \"DYNAMO_SURVEY_REGISTRY_TABLE_NAME\", \"value\": \"((prod_author_dynamo_survey_registry_table_name))\" }, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital\" }, { \"name\": \"GO_QUICK_LAUNCHER_URL\", \"value\": \"https://prod-author-launch.prod.eq.ons.digital/quick-launch?url=\" }, { \"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\" }"' \
-              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_survey_registry_table_arn))\"}]}"'
+              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": [\"((prod_author_dynamo_survey_registry_table_arn))\", \"((prod_author_dynamo_survey_registry_table_arn))/index/sortKey\"]}]}"'
 
     - task: Deploy Author
       params:
@@ -2968,7 +2968,7 @@ jobs:
               terraform init -backend-config="bucket="concourse-prod-terraform-state"" -backend-config="key="author-launch"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform plan \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"}"'
+              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"},{ \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital\" }"'
 
 
 - name: Prod-Author-Deploy
@@ -3351,7 +3351,7 @@ jobs:
               terraform apply \
               -var container_tag=$release_version \
               -var 'container_environment_variables="{ \"name\": \"DYNAMO_SURVEY_REGISTRY_TABLE_NAME\", \"value\": \"((prod_author_dynamo_survey_registry_table_name))\" }, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital\" }, { \"name\": \"GO_QUICK_LAUNCHER_URL\", \"value\": \"https://prod-author-launch.prod.eq.ons.digital/quick-launch?url=\" }, { \"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\" }"' \
-              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_survey_registry_table_arn))\"}]}"'
+              -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": [\"((prod_author_dynamo_survey_registry_table_arn))\", \"((prod_author_dynamo_survey_registry_table_arn))/index/sortKey\"]}]}"'
 
     - task: Deploy Author
       params:
@@ -3601,4 +3601,4 @@ jobs:
               terraform init -backend-config="bucket="concourse-prod-terraform-state"" -backend-config="key="prod-author-launch"" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"}"'
+              -var 'container_environment_variables="{ \"name\": \"SURVEY_RUNNER_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital\" },{ \"name\": \"SCHEMA_VALIDATOR_URL\", \"value\": \"https://prod-schema-validator.prod.eq.ons.digital\" }, {\"name\": \"SECRETS_S3_BUCKET\", \"value\": \"\"},{ \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital\" }"'
