@@ -1730,6 +1730,37 @@ jobs:
               terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-ecs" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
               terraform apply
 
+    - task: Deploy Author Alerting
+      params:
+        TF_VAR_env: 'preprod-author'
+        TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
+        TF_VAR_slack_webhook_path: '((slack_webhook_path))'
+        TF_VAR_slack_channel: 'author-preprod-alerts'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+        inputs:
+        - name: eq-terraform-release
+        run:
+          path: bash
+          args:
+          - -exc
+          - |
+            cd eq-terraform-release
+
+            mkdir eq-terraform
+            tar -xzf source.tar.gz -C eq-terraform --strip-components=1
+
+            cd eq-terraform/survey-runner-alerting
+            tfenv install
+
+            terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=author-alerting" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+            terraform apply
+
     - task: Deploy Author Database
       params:
         TF_VAR_env: 'preprod'
@@ -1778,7 +1809,7 @@ jobs:
         TF_VAR_env: 'preprod-author'
         TF_VAR_aws_account_id: '((preprod_aws_account_id))'
         TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
       config:
         platform: linux
         image_resource:
@@ -1808,7 +1839,7 @@ jobs:
         TF_VAR_env: 'preprod-author'
         TF_VAR_aws_account_id: '((preprod_aws_account_id))'
         TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
       config:
         platform: linux
         image_resource:
@@ -1882,7 +1913,7 @@ jobs:
         TF_VAR_container_port: 4000
         TF_VAR_listener_rule_priority: 800
         TF_VAR_healthcheck_path: '/status'
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
@@ -1935,7 +1966,7 @@ jobs:
         TF_VAR_container_name: 'eq-survey-register'
         TF_VAR_container_port: 8080
         TF_VAR_healthcheck_path: '/status'
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
@@ -1987,7 +2018,7 @@ jobs:
         TF_VAR_listener_rule_priority: 900
         TF_VAR_healthcheck_path: '/status.json'
         TF_VAR_healthcheck_grace_period_seconds: 120
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_high_cpu_threshold: 80
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
@@ -2040,7 +2071,7 @@ jobs:
         TF_VAR_container_port: 5000
         TF_VAR_listener_rule_priority: 450
         TF_VAR_healthcheck_path: '/status'
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
@@ -2087,7 +2118,7 @@ jobs:
         TF_VAR_container_port: 9000
         TF_VAR_listener_rule_priority: 300
         TF_VAR_healthcheck_path: '/status'
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
         TF_VAR_launch_type: 'FARGATE'
@@ -2135,7 +2166,7 @@ jobs:
         TF_VAR_container_port: 5000
         TF_VAR_listener_rule_priority: 200
         TF_VAR_task_has_iam_policy: true
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
@@ -2184,7 +2215,7 @@ jobs:
         TF_VAR_container_name: 'go-launch-a-survey'
         TF_VAR_container_port: 8000
         TF_VAR_listener_rule_priority: 700
-        TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
         TF_VAR_ecs_alb_security_group: '((preprod_author_ecs_alb_security_group))'
