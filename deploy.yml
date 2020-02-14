@@ -1758,7 +1758,7 @@ jobs:
             cd eq-terraform/survey-runner-alerting
             tfenv install
 
-            terraform init -backend-config "bucket=jenkins-ci-production-terraform-state" -backend-config "key=author-alerting" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+            terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-alerting" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
             terraform apply
 
     - task: Deploy Author Database
