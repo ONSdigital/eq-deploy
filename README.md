@@ -1,6 +1,6 @@
 This repo holds the Concourse build and deployment pipeline for the EQ products
 
-## Prerequesits
+## Prerequisite
 
 * [Fly](https://concourse-ci.org/)
 
