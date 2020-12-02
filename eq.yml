@@ -181,12 +181,16 @@ jobs:
   - put: survey-runner-image
     params:
       build: compiled-eq-survey-runner
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
       tag: eq-survey-runner/.git/HEAD
     get_params:
       skip_download: true
   - put: survey-runner-static-image
     params:
       build: compiled-eq-survey-runner
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
       dockerfile: compiled-eq-survey-runner/Dockerfile.static
       tag: eq-survey-runner/.git/HEAD
     get_params:
@@ -228,6 +232,8 @@ jobs:
     params:
       build: built-eq-author-app/eq-author
       tag: eq-author-app/.git/HEAD
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
     get_params:
       skip_download: true
 
@@ -236,6 +242,8 @@ jobs:
       build: built-eq-author-app/eq-author-api
       tag: eq-author-app/.git/HEAD
       build_args_file: build_args/args
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
     get_params:
       skip_download: true
 
@@ -244,6 +252,8 @@ jobs:
       build: built-eq-author-app/eq-publisher
       tag: eq-author-app/.git/HEAD
       build_args_file: build_args/args
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
     get_params:
       skip_download: true
 
@@ -255,6 +265,8 @@ jobs:
   - put: go-launch-a-survey-image
     params:
       build: go-launch-a-survey
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
       tag: go-launch-a-survey/.git/HEAD
     get_params:
       skip_download: true
@@ -293,6 +305,8 @@ jobs:
   - put: eq-survey-register-image
     params:
       build: built-eq-survey-register
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
       tag: eq-survey-register/.git/HEAD
     get_params:
       skip_download: true
@@ -328,6 +342,8 @@ jobs:
   - put: eq-schema-validator-image
     params:
       build: compiled-eq-schema-validator
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
       tag: eq-schema-validator/.git/HEAD
     get_params:
       skip_download: true
@@ -340,6 +356,8 @@ jobs:
   - put: eq-address-lookup-api-image
     params:
       build: eq-address-lookup-api
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
       tag: eq-address-lookup-api/.git/HEAD
     get_params:
       skip_download: true
@@ -352,6 +370,8 @@ jobs:
   - put: eq-lookup-api-image
     params:
       build: eq-lookup-api
+      username: ((dockerhub_username))
+      password: ((dockerhub_password))
       tag: eq-lookup-api/.git/HEAD
     get_params:
       skip_download: true
