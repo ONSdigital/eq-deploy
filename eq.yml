@@ -504,7 +504,10 @@ jobs:
             -var author_sentry_dsn="((author_sentry_dsn))" \
             -var author_api_enable_import="true" \
             -var author_secrets_bucket_name="((staging_author_secrets_bucket_name))" \
-            -var author_firebase_service_account_key="((author_firebase_service_account_key))"
+            -var author_firebase_service_account_key="((author_firebase_service_account_key))" \
+            -var author_database:="((staging_author_database))" \
+            -var author_mongo_username:="((staging_author_mongo_username))" \
+            -var author_mongo_password:="((staging_author_mongo_password))" \
     on_failure:
       put: slack-alert
       params:
