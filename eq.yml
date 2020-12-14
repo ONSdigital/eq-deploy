@@ -461,6 +461,9 @@ jobs:
       TF_VAR_author_registry: {{docker_registry}}
       TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
       TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+      TF_VAR_author_database: {{staging_author_database}}
+      TF_VAR_author_mongo_username: {{staging_author_mongo_username}}
+      TF_VAR_author_mongo_password: {{staging_author_mongo_password}}
     config:
       platform: linux
       image_resource:
@@ -504,10 +507,7 @@ jobs:
             -var author_sentry_dsn="((author_sentry_dsn))" \
             -var author_api_enable_import="true" \
             -var author_secrets_bucket_name="((staging_author_secrets_bucket_name))" \
-            -var author_firebase_service_account_key="((author_firebase_service_account_key))" \
-            -var author_database="((staging_author_database))" \
-            -var author_mongo_username="((staging_author_mongo_username))" \
-            -var author_mongo_password="((staging_author_mongo_password))"
+            -var author_firebase_service_account_key="((author_firebase_service_account_key))"
     on_failure:
       put: slack-alert
       params:
@@ -772,6 +772,9 @@ jobs:
       TF_VAR_author_registry: {{docker_registry}}
       TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
       TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+      TF_VAR_author_database: {{staging_author_database}}
+      TF_VAR_author_mongo_username: {{staging_author_mongo_username}}
+      TF_VAR_author_mongo_password: {{staging_author_mongo_password}}
     config:
       platform: linux
       image_resource:
