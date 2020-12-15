@@ -544,51 +544,6 @@ jobs:
           terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-alerting" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply
 
-  - task: Deploy EQ Survey Runner Database
-    params:
-      TF_VAR_env: 'preprod'
-      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
-      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-      TF_VAR_vpc_id: '((preprod_vpc_id))'
-      TF_VAR_application_cidrs: ["10.30.21.48/28","10.30.21.64/28","10.30.21.80/28","10.30.21.192/28","10.30.21.208/28","10.30.21.224/28"]
-      TF_VAR_database_name: '((preprod_database_name))'
-      TF_VAR_database_user: '((preprod_database_user))'
-      TF_VAR_database_password: '((preprod_database_password))'
-      TF_VAR_database_instance_class: 'db.r3.xlarge'
-      TF_VAR_database_engine_version: '11.8'
-      TF_VAR_database_apply_immediately: true
-      TF_VAR_database_allocated_storage: 640
-      TF_VAR_snapshot_identifier: '((preprod_database_snapshot_identifier))'
-      TF_VAR_preferred_maintenance_window: 'tue:02:00-tue:02:30'
-      TF_VAR_db_subnet_group_name: 'preprod-eq-rds'
-      TF_VAR_database_identifier: 'preprod-digitaleqrds'
-      TF_VAR_rds_security_group_name: 'preprod-rds-access'
-    config:
-      platform: linux
-      image_resource:
-        type: docker-image
-        source:
-          repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
-      inputs:
-      - name: eq-terraform-release
-      run:
-        path: bash
-        args:
-        - -exc
-        - |
-          cd eq-terraform-release
-
-          mkdir eq-terraform
-          tar -xzf source.tar.gz -C eq-terraform --strip-components=1
-
-          cd eq-terraform/survey-runner-database
-          tfenv install
-
-          terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=survey-runner-database" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
-          terraform apply
-
   - task: Deploy EQ Survey Runner DynamoDB
     params:
       TF_VAR_env: 'preprod'
@@ -717,7 +672,7 @@ jobs:
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-runner"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
           -var container_tag=$release_version \
-          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((preprod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((preprod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_HOST\",\"value\": \"((preprod_database_host))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_PORT\",\"value\": \"((preprod_database_port))\"},{\"name\": \"EQ_SERVER_SIDE_STORAGE_DATABASE_NAME\",\"value\": \"((preprod_database_name))\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"EQ_GTM_ID\",\"value\": \"((runner_google_tag_manager_id))\"},{\"name\": \"EQ_GTM_ENV_ID\",\"value\": \"((preprod_runner_google_tag_manager_environment_id))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"preprod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"preprod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"preprod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"preprod-used-jti-claim\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"False\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"PreProd - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
+          -var 'container_environment_variables="{\"name\": \"EQ_RABBITMQ_HOST\",\"value\": \"((preprod_rabbitmq_ip_prime))\"},{\"name\": \"EQ_RABBITMQ_HOST_SECONDARY\",\"value\": \"((preprod_rabbitmq_ip_failover))\"},{\"name\": \"EQ_RABBITMQ_QUEUE_NAME\",\"value\": \"submit_q\"},{\"name\": \"SQLALCHEMY_DATABASE_URI\",\"value\": \"sqlite:////tmp/questionnaire.db\"},{\"name\": \"EQ_UA_ID\",\"value\": \"((prod_google_analytics_code))\"},{\"name\": \"EQ_GTM_ID\",\"value\": \"((runner_google_tag_manager_id))\"},{\"name\": \"EQ_GTM_ENV_ID\",\"value\": \"((preprod_runner_google_tag_manager_environment_id))\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets-runner\"},{\"name\": \"EQ_SECRETS_FILE\",\"value\": \"../../../secrets/secrets.yml\"},{\"name\": \"EQ_KEYS_FILE\",\"value\": \"../../../secrets/keys.yml\"},{\"name\": \"RESPONDENT_ACCOUNT_URL\",\"value\": \"https://survey.ons.gov.uk/\"},{\"name\": \"EQ_SUBMITTED_RESPONSES_TABLE_NAME\",\"value\": \"preprod-submitted-responses\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_TABLE_NAME\",\"value\": \"preprod-questionnaire-state\"},{\"name\": \"EQ_SESSION_TABLE_NAME\",\"value\": \"preprod-eq-session\"},{\"name\": \"EQ_USED_JTI_CLAIM_TABLE_NAME\",\"value\": \"preprod-used-jti-claim\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_USED_JTI_CLAIM_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_SESSION_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_DYNAMO_READ\",\"value\": \"True\"},{\"name\": \"EQ_QUESTIONNAIRE_STATE_DYNAMO_WRITE\",\"value\": \"True\"},{\"name\": \"EQ_NEW_RELIC_ENABLED\",\"value\": \"False\"},{\"name\": \"NEW_RELIC_APP_NAME\",\"value\": \"PreProd - Survey Runner - ECS\"},{\"name\": \"NEW_RELIC_LICENSE_KEY\",\"value\": \"((new_relic_licence_key))\"}"' \
           -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\": \"arn:aws:s3:::*\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\"],\"Resource\": \"((preprod_submitted_responses_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_questionnaire_state_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\",\"dynamodb:GetItem\",\"dynamodb:DeleteItem\"],\"Resource\": \"((preprod_eq_session_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:PutItem\"],\"Resource\": \"((preprod_used_jti_claim_table_arn))\"}]}"'
 
   - task: Deploy EQ Survey Runner Static
@@ -1840,51 +1795,6 @@ jobs:
 
             terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-alerting" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
             terraform apply
-
-    - task: Deploy Author Database
-      params:
-        TF_VAR_env: 'preprod'
-        TF_VAR_aws_account_id: '((preprod_aws_account_id))'
-        TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
-        TF_VAR_vpc_id: '((preprod_author_vpc_id))'
-        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
-        TF_VAR_database_name: '((preprod_author_database_name))'
-        TF_VAR_database_user: '((preprod_author_database_user))'
-        TF_VAR_database_password: '((preprod_author_database_password))'
-        TF_VAR_database_instance_class: 'db.t2.medium'
-        TF_VAR_database_engine_version: '11.8'
-        TF_VAR_database_apply_immediately: true
-        TF_VAR_database_allocated_storage: 100
-        TF_VAR_snapshot_identifier: '((preprod_author_database_snapshot_identifier))'
-        TF_VAR_preferred_maintenance_window: 'tue:02:00-tue:03:00'
-        TF_VAR_db_subnet_group_name: 'preprod-eq-author-rds'
-        TF_VAR_database_identifier: 'preprod-author-rds'
-        TF_VAR_rds_security_group_name: 'preprod-author-rds-access'
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
-        inputs:
-          - name: eq-terraform-release
-        run:
-          path: bash
-          args:
-            - -exc
-            - |
-              cd eq-terraform-release
-
-              mkdir eq-terraform
-              tar -xzf source.tar.gz -C eq-terraform --strip-components=1
-
-              cd eq-terraform/survey-runner-database
-              tfenv install
-
-              terraform init -backend-config "bucket=concourse-preprod-terraform-state" -backend-config "key=author-database" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
-              terraform apply
 
     - task: Deploy Author Survey Runner DynamoDB
       params:
