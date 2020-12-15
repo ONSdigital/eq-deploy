@@ -461,6 +461,9 @@ jobs:
       TF_VAR_author_registry: {{docker_registry}}
       TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
       TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+      TF_VAR_author_database: {{staging_author_database}}
+      TF_VAR_author_mongo_username: {{staging_author_mongo_username}}
+      TF_VAR_author_mongo_password: {{staging_author_mongo_password}}
     config:
       platform: linux
       image_resource:
@@ -769,6 +772,9 @@ jobs:
       TF_VAR_author_registry: {{docker_registry}}
       TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
       TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+      TF_VAR_author_database: {{staging_author_database}}
+      TF_VAR_author_mongo_username: {{staging_author_mongo_username}}
+      TF_VAR_author_mongo_password: {{staging_author_mongo_password}}
     config:
       platform: linux
       image_resource:
