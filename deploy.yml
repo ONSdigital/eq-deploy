@@ -2457,6 +2457,11 @@ jobs:
       trigger: true
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-documentdb-release
+      passed: [PreProd-Author-Deploy]
+      trigger: true
+      params:
+        include_source_tarball: true
     - get: eq-author-terraform-dynamodb-release
       passed: [PreProd-Author-Deploy]
       trigger: true
@@ -2623,50 +2628,6 @@ jobs:
             terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-alerting" -backend-config="role_arn="((prod_aws_assume_role_arn))""
             terraform plan
 
-    - task: Deploy Author Database
-      params:
-        TF_VAR_env: 'prod'
-        TF_VAR_aws_account_id: '((prod_aws_account_id))'
-        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
-        TF_VAR_vpc_id: '((prod_author_vpc_id))'
-        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
-        TF_VAR_database_name: '((prod_author_database_name))'
-        TF_VAR_database_user: '((prod_author_database_user))'
-        TF_VAR_database_password: '((prod_author_database_password))'
-        TF_VAR_database_instance_class: 'db.t2.medium'
-        TF_VAR_database_engine_version: '11.8'
-        TF_VAR_database_apply_immediately: true
-        TF_VAR_database_allocated_storage: 100
-        TF_VAR_preferred_maintenance_window: 'tue:02:00-tue:03:00'
-        TF_VAR_db_subnet_group_name: 'prod-eq-author-rds'
-        TF_VAR_database_identifier: 'prod-author-rds'
-        TF_VAR_rds_security_group_name: 'prod-author-rds-access'
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
-        inputs:
-          - name: eq-terraform-release
-        run:
-          path: bash
-          args:
-            - -exc
-            - |
-              cd eq-terraform-release
-
-              mkdir eq-terraform
-              tar -xzf source.tar.gz -C eq-terraform --strip-components=1
-
-              cd eq-terraform/survey-runner-database
-              tfenv install
-
-              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-database" -backend-config="role_arn="((prod_aws_assume_role_arn))""
-              terraform plan
-
     - task: Deploy Author Survey Runner DynamoDB
       params:
         TF_VAR_env: 'prod-author'
@@ -2729,6 +2690,45 @@ jobs:
               tfenv install
 
               terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+              terraform plan
+
+    - task: Deploy Author DocumentDB
+      params:
+        TF_VAR_env: 'prod-author'
+        TF_VAR_aws_account_id: '((prod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+        TF_VAR_slack_alert_sns_arn: '((prod_author_slack_alert_sns_arn))'
+        TF_VAR_vpc_id: '((prod_author_vpc_id))'
+        TF_VAR_documentdb_security_group_name: 'author-documentdb-security-group'
+        TF_VAR_documentdb_cluster_name: 'author-documentdb'
+        TF_VAR_documentdb_subnet_group_name: 'prod-eq-author-rds'
+        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
+        TF_VAR_master_username: '((prod_author_mongo_username))'
+        TF_VAR_master_password: '((prod_author_mongo_password))'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+            username: ((dockerhub_username))
+            password: ((dockerhub_password))
+        inputs:
+          - name: eq-author-terraform-documentdb-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-author-terraform-documentdb-release
+
+              mkdir eq-author-terraform-documentdb
+              tar -xzf source.tar.gz -C eq-author-terraform-documentdb --strip-components=1
+
+              cd eq-author-terraform-documentdb
+              tfenv install
+
+              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-documentdb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform plan
 
     - task: Deploy Author Redis
@@ -3155,6 +3155,11 @@ jobs:
       passed: [Prod-Author-Deploy-Plan]
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-documentdb-release
+      passed: [Prod-Author-Deploy-Plan]
+      trigger: true
+      params:
+        include_source_tarball: true
     - get: eq-author-terraform-redis-release
       passed: [Prod-Author-Deploy-Plan]
       params:
@@ -3317,50 +3322,6 @@ jobs:
             terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-alerting" -backend-config="role_arn="((prod_aws_assume_role_arn))""
             terraform apply
 
-    - task: Deploy Author Database
-      params:
-        TF_VAR_env: 'prod'
-        TF_VAR_aws_account_id: '((prod_aws_account_id))'
-        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
-        TF_VAR_vpc_id: '((prod_author_vpc_id))'
-        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
-        TF_VAR_database_name: '((prod_author_database_name))'
-        TF_VAR_database_user: '((prod_author_database_user))'
-        TF_VAR_database_password: '((prod_author_database_password))'
-        TF_VAR_database_instance_class: 'db.t2.medium'
-        TF_VAR_database_engine_version: '11.8'
-        TF_VAR_database_apply_immediately: true
-        TF_VAR_database_allocated_storage: 100
-        TF_VAR_preferred_maintenance_window: 'tue:02:00-tue:03:00'
-        TF_VAR_db_subnet_group_name: 'prod-eq-author-rds'
-        TF_VAR_database_identifier: 'prod-author-rds'
-        TF_VAR_rds_security_group_name: 'prod-author-rds-access'
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
-        inputs:
-          - name: eq-terraform-release
-        run:
-          path: bash
-          args:
-            - -exc
-            - |
-              cd eq-terraform-release
-
-              mkdir eq-terraform
-              tar -xzf source.tar.gz -C eq-terraform --strip-components=1
-
-              cd eq-terraform/survey-runner-database
-              tfenv install
-
-              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-database" -backend-config="role_arn="((prod_aws_assume_role_arn))""
-              terraform apply
-
     - task: Deploy Author Survey Runner DynamoDB
       params:
         TF_VAR_env: 'prod-author'
@@ -3423,6 +3384,45 @@ jobs:
               tfenv install
 
               terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+              terraform apply
+
+    - task: Deploy Author DocumentDB
+      params:
+        TF_VAR_env: 'prod-author'
+        TF_VAR_aws_account_id: '((prod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+        TF_VAR_slack_alert_sns_arn: '((prod_author_slack_alert_sns_arn))'
+        TF_VAR_vpc_id: '((prod_author_vpc_id))'
+        TF_VAR_documentdb_security_group_name: 'author-documentdb-security-group'
+        TF_VAR_documentdb_cluster_name: 'author-documentdb'
+        TF_VAR_documentdb_subnet_group_name: 'prod-eq-author-rds'
+        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
+        TF_VAR_master_username: '((prod_author_mongo_username))'
+        TF_VAR_master_password: '((prod_author_mongo_password))'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+            username: ((dockerhub_username))
+            password: ((dockerhub_password))
+        inputs:
+          - name: eq-author-terraform-documentdb-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-author-terraform-documentdb-release
+
+              mkdir eq-author-terraform-documentdb
+              tar -xzf source.tar.gz -C eq-author-terraform-documentdb --strip-components=1
+
+              cd eq-author-terraform-documentdb
+              tfenv install
+
+              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-documentdb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform apply
 
     - task: Deploy Author Redis
