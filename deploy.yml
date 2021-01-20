@@ -74,6 +74,13 @@ resources:
     repository: eq-author-terraform-dynamodb
     access_token: ((github_access_token))
 
+- name: eq-author-terraform-documentdb-release
+  type: github-release-latest
+  source:
+    owner: ONSdigital
+    repository: eq-author-terraform-documentdb
+    access_token: ((github_access_token))
+
 - name: eq-author-terraform-redis-release
   type: github-release
   source:
@@ -1632,6 +1639,10 @@ jobs:
       trigger: true
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-documentdb-release
+      trigger: true
+      params:
+        include_source_tarball: true
     - get: eq-author-terraform-redis-release
       trigger: true
       params:
@@ -1860,6 +1871,45 @@ jobs:
               terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-dynamodb" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
               terraform apply
 
+    - task: Deploy Author DocumentDB
+      params:
+        TF_VAR_env: 'preprod-author'
+        TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
+        TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
+        TF_VAR_vpc_id: '((preprod_author_vpc_id))'
+        TF_VAR_documentdb_security_group_name: 'author-documentdb-security-group'
+        TF_VAR_documentdb_cluster_name: 'author-documentdb'
+        TF_VAR_documentdb_subnet_group_name: 'preprod-eq-author-rds'
+        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
+        TF_VAR_master_username: '((preprod_author_mongo_username))'
+        TF_VAR_master_password: '((preprod_author_mongo_password))'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+            username: ((dockerhub_username))
+            password: ((dockerhub_password))
+        inputs:
+          - name: eq-author-terraform-documentdb-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-author-terraform-documentdb-release
+
+              mkdir eq-author-terraform-documentdb
+              tar -xzf source.tar.gz -C eq-author-terraform-documentdb --strip-components=1
+
+              cd eq-author-terraform-documentdb
+              tfenv install
+
+              terraform init -backend-config "bucket=jenkins-ci-terraform-state" -backend-config "key=author-documentdb" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+              terraform apply
+
     - task: Deploy Author Redis
       params:
         TF_VAR_env: 'preprod-author'
@@ -1910,6 +1960,8 @@ jobs:
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
         TF_VAR_listener_rule_priority: 800
+        TF_VAR_healthcheck_timeout: 29
+        TF_VAR_healthcheck_interval: 30
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
@@ -1948,7 +2000,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_version_table_name))\"},  {\"name\": \"DYNAMO_USER_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_user_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}, {\"name\": \"FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\"}, {\"name\": \"REDIS_PORT\", \"value\": \"((preprod_author_redis_port))\"}, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://preprod-author-survey-register.eq.ons.digital/submit/\" }, {\"name\": \"REDIS_DOMAIN_NAME\", \"value\": \"((preprod_author_redis_domain_name))\"}, {\"name\": \"DYNAMO_COMMENTS_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_comments_table_name))\"}"' \
+              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((preprod_author_database_connection_string))\"}, {\"name\": \"ENABLE_IMPORT\", \"value\": \"true\"}, {\"name\": \"DATABASE\", \"value\": \"((preprod_author_database))\"}, {\"name\": \"MONGO_URL\", \"value\": \"((preprod_author_mongo_url))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_questionnaire_version_table_name))\"},  {\"name\": \"DYNAMO_USER_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_user_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://preprod-author-surveys.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://preprod-publisher.eq.ons.digital/publish/\"}, {\"name\": \"FIREBASE_PROJECT_ID\", \"value\": \"((preprod_author_firebase_project_id))\"}, {\"name\": \"REDIS_PORT\", \"value\": \"((preprod_author_redis_port))\"}, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://preprod-author-survey-register.eq.ons.digital/submit/\" }, {\"name\": \"REDIS_DOMAIN_NAME\", \"value\": \"((preprod_author_redis_domain_name))\"}, {\"name\": \"DYNAMO_COMMENTS_TABLE_NAME\", \"value\": \"((preprod_author_dynamo_comments_table_name))\"}"' \
               -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_questionnaire_version_table_arn))\"},  {\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_users_table_arn))\"}, {\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((preprod_author_dynamo_comments_table_arn))\"}]}"'
 
     - task: Deploy Survey Register
@@ -2407,6 +2459,11 @@ jobs:
       trigger: true
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-documentdb-release
+      passed: [PreProd-Author-Deploy]
+      trigger: true
+      params:
+        include_source_tarball: true
     - get: eq-author-terraform-dynamodb-release
       passed: [PreProd-Author-Deploy]
       trigger: true
@@ -2573,50 +2630,6 @@ jobs:
             terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-alerting" -backend-config="role_arn="((prod_aws_assume_role_arn))""
             terraform plan
 
-    - task: Deploy Author Database
-      params:
-        TF_VAR_env: 'prod'
-        TF_VAR_aws_account_id: '((prod_aws_account_id))'
-        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
-        TF_VAR_vpc_id: '((prod_author_vpc_id))'
-        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
-        TF_VAR_database_name: '((prod_author_database_name))'
-        TF_VAR_database_user: '((prod_author_database_user))'
-        TF_VAR_database_password: '((prod_author_database_password))'
-        TF_VAR_database_instance_class: 'db.t2.medium'
-        TF_VAR_database_engine_version: '11.8'
-        TF_VAR_database_apply_immediately: true
-        TF_VAR_database_allocated_storage: 100
-        TF_VAR_preferred_maintenance_window: 'tue:02:00-tue:03:00'
-        TF_VAR_db_subnet_group_name: 'prod-eq-author-rds'
-        TF_VAR_database_identifier: 'prod-author-rds'
-        TF_VAR_rds_security_group_name: 'prod-author-rds-access'
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
-        inputs:
-          - name: eq-terraform-release
-        run:
-          path: bash
-          args:
-            - -exc
-            - |
-              cd eq-terraform-release
-
-              mkdir eq-terraform
-              tar -xzf source.tar.gz -C eq-terraform --strip-components=1
-
-              cd eq-terraform/survey-runner-database
-              tfenv install
-
-              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-database" -backend-config="role_arn="((prod_aws_assume_role_arn))""
-              terraform plan
-
     - task: Deploy Author Survey Runner DynamoDB
       params:
         TF_VAR_env: 'prod-author'
@@ -2681,6 +2694,45 @@ jobs:
               terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform plan
 
+    - task: Deploy Author DocumentDB
+      params:
+        TF_VAR_env: 'prod-author'
+        TF_VAR_aws_account_id: '((prod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+        TF_VAR_slack_alert_sns_arn: '((prod_author_slack_alert_sns_arn))'
+        TF_VAR_vpc_id: '((prod_author_vpc_id))'
+        TF_VAR_documentdb_security_group_name: 'author-documentdb-security-group'
+        TF_VAR_documentdb_cluster_name: 'author-documentdb'
+        TF_VAR_documentdb_subnet_group_name: 'prod-eq-author-rds'
+        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
+        TF_VAR_master_username: '((prod_author_mongo_username))'
+        TF_VAR_master_password: '((prod_author_mongo_password))'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+            username: ((dockerhub_username))
+            password: ((dockerhub_password))
+        inputs:
+          - name: eq-author-terraform-documentdb-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-author-terraform-documentdb-release
+
+              mkdir eq-author-terraform-documentdb
+              tar -xzf source.tar.gz -C eq-author-terraform-documentdb --strip-components=1
+
+              cd eq-author-terraform-documentdb
+              tfenv install
+
+              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-documentdb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+              terraform plan
+
     - task: Deploy Author Redis
       params:
         TF_VAR_env: 'prod-author'
@@ -2731,6 +2783,8 @@ jobs:
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
         TF_VAR_listener_rule_priority: 800
+        TF_VAR_healthcheck_timeout: 29
+        TF_VAR_healthcheck_interval: 30
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_author_slack_alert_sns_arn))'
@@ -2770,7 +2824,7 @@ jobs:
 
               terraform plan \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_version_table_name))\"}, {\"name\": \"DYNAMO_USER_TABLE_NAME\", \"value\": \"((prod_author_dynamo_user_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\"}, {\"name\": \"FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\"}, {\"name\": \"REDIS_PORT\", \"value\": \"((prod_author_redis_port))\"}, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital/submit/\" }, {\"name\": \"REDIS_DOMAIN_NAME\", \"value\": \"((prod_author_redis_domain_name))\"}, {\"name\": \"DYNAMO_COMMENTS_TABLE_NAME\", \"value\": \"((prod_author_dynamo_comments_table_name))\"}"' \
+              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}, {\"name\": \"ENABLE_IMPORT\", \"value\": \"true\"}, {\"name\": \"DATABASE\", \"value\": \"((prod_author_database))\"}, {\"name\": \"MONGO_URL\", \"value\": \"((prod_author_mongo_url))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_version_table_name))\"}, {\"name\": \"DYNAMO_USER_TABLE_NAME\", \"value\": \"((prod_author_dynamo_user_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\"}, {\"name\": \"FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\"}, {\"name\": \"REDIS_PORT\", \"value\": \"((prod_author_redis_port))\"}, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital/submit/\" }, {\"name\": \"REDIS_DOMAIN_NAME\", \"value\": \"((prod_author_redis_domain_name))\"}, {\"name\": \"DYNAMO_COMMENTS_TABLE_NAME\", \"value\": \"((prod_author_dynamo_comments_table_name))\"}"' \
               -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_questionnaire_version_table_arn))\"}, {\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_users_table_arn))\"}, {\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_comments_table_arn))\"}]}"'
 
     - task: Deploy Survey Register
@@ -3105,6 +3159,11 @@ jobs:
       passed: [Prod-Author-Deploy-Plan]
       params:
         include_source_tarball: true
+    - get: eq-author-terraform-documentdb-release
+      passed: [Prod-Author-Deploy-Plan]
+      trigger: true
+      params:
+        include_source_tarball: true
     - get: eq-author-terraform-redis-release
       passed: [Prod-Author-Deploy-Plan]
       params:
@@ -3267,50 +3326,6 @@ jobs:
             terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-alerting" -backend-config="role_arn="((prod_aws_assume_role_arn))""
             terraform apply
 
-    - task: Deploy Author Database
-      params:
-        TF_VAR_env: 'prod'
-        TF_VAR_aws_account_id: '((prod_aws_account_id))'
-        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
-        TF_VAR_vpc_id: '((prod_author_vpc_id))'
-        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
-        TF_VAR_database_name: '((prod_author_database_name))'
-        TF_VAR_database_user: '((prod_author_database_user))'
-        TF_VAR_database_password: '((prod_author_database_password))'
-        TF_VAR_database_instance_class: 'db.t2.medium'
-        TF_VAR_database_engine_version: '11.8'
-        TF_VAR_database_apply_immediately: true
-        TF_VAR_database_allocated_storage: 100
-        TF_VAR_preferred_maintenance_window: 'tue:02:00-tue:03:00'
-        TF_VAR_db_subnet_group_name: 'prod-eq-author-rds'
-        TF_VAR_database_identifier: 'prod-author-rds'
-        TF_VAR_rds_security_group_name: 'prod-author-rds-access'
-      config:
-        platform: linux
-        image_resource:
-          type: docker-image
-          source:
-            repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
-        inputs:
-          - name: eq-terraform-release
-        run:
-          path: bash
-          args:
-            - -exc
-            - |
-              cd eq-terraform-release
-
-              mkdir eq-terraform
-              tar -xzf source.tar.gz -C eq-terraform --strip-components=1
-
-              cd eq-terraform/survey-runner-database
-              tfenv install
-
-              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-database" -backend-config="role_arn="((prod_aws_assume_role_arn))""
-              terraform apply
-
     - task: Deploy Author Survey Runner DynamoDB
       params:
         TF_VAR_env: 'prod-author'
@@ -3375,6 +3390,45 @@ jobs:
               terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-dynamodb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
               terraform apply
 
+    - task: Deploy Author DocumentDB
+      params:
+        TF_VAR_env: 'prod-author'
+        TF_VAR_aws_account_id: '((prod_aws_account_id))'
+        TF_VAR_aws_assume_role_arn: '((prod_aws_assume_role_arn))'
+        TF_VAR_slack_alert_sns_arn: '((prod_author_slack_alert_sns_arn))'
+        TF_VAR_vpc_id: '((prod_author_vpc_id))'
+        TF_VAR_documentdb_security_group_name: 'author-documentdb-security-group'
+        TF_VAR_documentdb_cluster_name: 'author-documentdb'
+        TF_VAR_documentdb_subnet_group_name: 'prod-eq-author-rds'
+        TF_VAR_application_cidrs: ["10.0.64.0/18", "10.0.128.0/18", "10.0.192.0/18"]
+        TF_VAR_master_username: '((prod_author_mongo_username))'
+        TF_VAR_master_password: '((prod_author_mongo_password))'
+      config:
+        platform: linux
+        image_resource:
+          type: docker-image
+          source:
+            repository: onsdigital/eq-terraform-build
+            username: ((dockerhub_username))
+            password: ((dockerhub_password))
+        inputs:
+          - name: eq-author-terraform-documentdb-release
+        run:
+          path: bash
+          args:
+            - -exc
+            - |
+              cd eq-author-terraform-documentdb-release
+
+              mkdir eq-author-terraform-documentdb
+              tar -xzf source.tar.gz -C eq-author-terraform-documentdb --strip-components=1
+
+              cd eq-author-terraform-documentdb
+              tfenv install
+
+              terraform init -backend-config "bucket=concourse-prod-terraform-state" -backend-config "key=author-documentdb" -backend-config="role_arn="((prod_aws_assume_role_arn))""
+              terraform apply
+
     - task: Deploy Author Redis
       params:
         TF_VAR_env: 'prod-author'
@@ -3425,6 +3479,8 @@ jobs:
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
         TF_VAR_listener_rule_priority: 800
+        TF_VAR_healthcheck_timeout: 29
+        TF_VAR_healthcheck_interval: 30
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_author_slack_alert_sns_arn))'
@@ -3464,7 +3520,7 @@ jobs:
 
               terraform apply \
               -var container_tag=$release_version \
-              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_version_table_name))\"}, {\"name\": \"DYNAMO_USER_TABLE_NAME\", \"value\": \"((prod_author_dynamo_user_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\"}, {\"name\": \"FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\"}, {\"name\": \"REDIS_PORT\", \"value\": \"((prod_author_redis_port))\"}, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital/submit/\" }, {\"name\": \"REDIS_DOMAIN_NAME\", \"value\": \"((prod_author_redis_domain_name))\"}, {\"name\": \"DYNAMO_COMMENTS_TABLE_NAME\", \"value\": \"((prod_author_dynamo_comments_table_name))\"}"' \
+              -var 'container_environment_variables="{\"name\": \"DB_CONNECTION_URI\", \"value\": \"((prod_author_database_connection_string))\"}, {\"name\": \"ENABLE_IMPORT\", \"value\": \"true\"}, {\"name\": \"DATABASE\", \"value\": \"((prod_author_database))\"}, {\"name\": \"MONGO_URL\", \"value\": \"((prod_author_mongo_url))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_table_name))\"}, {\"name\": \"DYNAMO_QUESTIONNAIRE_VERSION_TABLE_NAME\", \"value\": \"((prod_author_dynamo_questionnaire_version_table_name))\"}, {\"name\": \"DYNAMO_USER_TABLE_NAME\", \"value\": \"((prod_author_dynamo_user_table_name))\"}, {\"name\": \"RUNNER_SESSION_URL\", \"value\": \"https://prod-author-surveys.prod.eq.ons.digital/session?token=\"}, {\"name\": \"PUBLISHER_URL\", \"value\": \"https://prod-publisher.prod.eq.ons.digital/publish/\"}, {\"name\": \"FIREBASE_PROJECT_ID\", \"value\": \"((prod_author_firebase_project_id))\"}, {\"name\": \"REDIS_PORT\", \"value\": \"((prod_author_redis_port))\"}, { \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://prod-author-survey-register.prod.eq.ons.digital/submit/\" }, {\"name\": \"REDIS_DOMAIN_NAME\", \"value\": \"((prod_author_redis_domain_name))\"}, {\"name\": \"DYNAMO_COMMENTS_TABLE_NAME\", \"value\": \"((prod_author_dynamo_comments_table_name))\"}"' \
               -var 'task_iam_policy_json="{\"Version\": \"2012-10-17\",\"Statement\": [{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_questionnaire_table_arn))\"},{\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_questionnaire_version_table_arn))\"}, {\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_users_table_arn))\"}, {\"Sid\": \"\",\"Effect\": \"Allow\",\"Action\": [\"dynamodb:Scan\", \"dynamodb:DescribeTable\", \"dynamodb:PutItem\", \"dynamodb:UpdateItem\", \"dynamodb:GetItem\", \"dynamodb:DeleteItem\", \"dynamodb:Query\"],\"Resource\": \"((prod_author_dynamo_comments_table_arn))\"}]}"'
 
     - task: Deploy Survey Register
