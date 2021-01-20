@@ -1960,6 +1960,8 @@ jobs:
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
         TF_VAR_listener_rule_priority: 800
+        TF_VAR_healthcheck_timeout: 29
+        TF_VAR_healthcheck_interval: 30
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_slack_alert_sns_arn: '((preprod_author_slack_alert_sns_arn))'
         TF_VAR_ecs_subnet_ids: '((preprod_author_applicaiton_subnet_ids))'
@@ -2781,6 +2783,8 @@ jobs:
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
         TF_VAR_listener_rule_priority: 800
+        TF_VAR_healthcheck_timeout: 29
+        TF_VAR_healthcheck_interval: 30
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_author_slack_alert_sns_arn))'
@@ -3475,6 +3479,8 @@ jobs:
         TF_VAR_container_name: 'eq-author-api'
         TF_VAR_container_port: 4000
         TF_VAR_listener_rule_priority: 800
+        TF_VAR_healthcheck_timeout: 29
+        TF_VAR_healthcheck_interval: 30
         TF_VAR_healthcheck_path: '/status'
         TF_VAR_dns_zone_name: '((prod_dns_zone_name))'
         TF_VAR_slack_alert_sns_arn: '((prod_author_slack_alert_sns_arn))'
