@@ -4,16 +4,12 @@ resource_types:
   source:
     repository: cfcommunity/slack-notification-resource
     tag: latest
-    username: ((dockerhub_username))
-    password: ((dockerhub_password))
 
 - name: github-release-latest
   type: docker-image
   source:
     repository: concourse/github-release-resource
     tag: 1.1.0
-    username: ((dockerhub_username))
-    password: ((dockerhub_password))
 
 resources:
 - name: eq-survey-runner-release
@@ -162,8 +158,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-python-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       outputs:
@@ -212,8 +206,6 @@ jobs:
         source:
           repository: cypress/base
           tag: 10.16.3
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-author-app-release
       outputs:
@@ -274,8 +266,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-python-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
         - name: eq-schema-validator-release
       outputs:
@@ -314,8 +304,6 @@ jobs:
         source:
           repository: node
           tag: latest
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-register-release
       outputs:
@@ -355,8 +343,6 @@ jobs:
         source:
           repository: bash
           tag: latest
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: go-launch-a-survey-release
       outputs:
@@ -418,8 +404,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -456,8 +440,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -498,8 +480,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-ecs-release
       run:
@@ -531,8 +511,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -563,8 +541,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-dynamodb-release
       run:
@@ -612,8 +588,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -656,8 +630,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       - name: eq-ecs-deploy-release
@@ -706,8 +678,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       - name: eq-ecs-deploy-release
@@ -738,8 +708,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       run:
@@ -810,8 +778,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -847,8 +813,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -886,8 +850,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-ecs-release
       run:
@@ -919,8 +881,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -949,7 +909,7 @@ jobs:
       TF_VAR_database_user: '((prod_database_user))'
       TF_VAR_database_password: '((prod_database_password))'
       TF_VAR_database_instance_class: 'db.r3.xlarge'
-      TF_VAR_database_engine_version: '11.8'
+      TF_VAR_database_engine_version: '11.10'
       TF_VAR_database_apply_immediately: false
       TF_VAR_database_allocated_storage: 640
       TF_VAR_snapshot_identifier: '((prod_database_snapshot_identifier))'
@@ -963,8 +923,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -994,8 +952,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-dynamodb-release
       run:
@@ -1042,8 +998,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -1089,8 +1043,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       - name: eq-ecs-deploy-release
@@ -1141,8 +1093,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       - name: eq-ecs-deploy-release
@@ -1221,8 +1171,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -1258,8 +1206,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -1297,8 +1243,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-ecs-release
       run:
@@ -1330,8 +1274,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -1360,7 +1302,7 @@ jobs:
       TF_VAR_database_user: '((prod_database_user))'
       TF_VAR_database_password: '((prod_database_password))'
       TF_VAR_database_instance_class: 'db.r3.xlarge'
-      TF_VAR_database_engine_version: '11.8'
+      TF_VAR_database_engine_version: '11.10'
       TF_VAR_database_apply_immediately: false
       TF_VAR_database_allocated_storage: 640
       TF_VAR_snapshot_identifier: '((prod_database_snapshot_identifier))'
@@ -1374,8 +1316,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -1405,8 +1345,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-dynamodb-release
       run:
@@ -1453,8 +1391,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-terraform-release
       run:
@@ -1500,8 +1436,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       - name: eq-ecs-deploy-release
@@ -1551,8 +1485,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       - name: eq-ecs-deploy-release
@@ -1583,8 +1515,6 @@ jobs:
         type: docker-image
         source:
           repository: onsdigital/eq-terraform-build
-          username: ((dockerhub_username))
-          password: ((dockerhub_password))
       inputs:
       - name: eq-survey-runner-release
       run:
@@ -1676,8 +1606,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-release
         run:
@@ -1711,8 +1639,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-release
         run:
@@ -1754,8 +1680,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-ecs-release
         run:
@@ -1787,8 +1711,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
         - name: eq-terraform-release
         run:
@@ -1819,8 +1741,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-dynamodb-release
         run:
@@ -1851,8 +1771,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-dynamodb-release
         run:
@@ -1890,8 +1808,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-documentdb-release
         run:
@@ -1924,8 +1840,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-redis-release
         run:
@@ -1976,8 +1890,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -2029,8 +1941,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-survey-register-release
           - name: eq-ecs-deploy-release
@@ -2086,8 +1996,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -2137,8 +2045,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-schema-validator-release
           - name: eq-ecs-deploy-release
@@ -2186,8 +2092,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -2237,8 +2141,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-survey-runner-release
           - name: eq-ecs-deploy-release
@@ -2288,8 +2190,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: go-launch-a-survey-release
           - name: eq-ecs-deploy-release
@@ -2322,8 +2222,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
         run:
@@ -2351,8 +2249,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
         run:
@@ -2380,8 +2276,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
         run:
@@ -2409,8 +2303,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-survey-runner-release
         run:
@@ -2499,8 +2391,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-release
         run:
@@ -2534,8 +2424,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-release
         run:
@@ -2577,8 +2465,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-ecs-release
         run:
@@ -2610,8 +2496,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
         - name: eq-terraform-release
         run:
@@ -2642,8 +2526,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-dynamodb-release
         run:
@@ -2674,8 +2556,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-dynamodb-release
         run:
@@ -2713,8 +2593,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-documentdb-release
         run:
@@ -2747,8 +2625,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-redis-release
         run:
@@ -2800,8 +2676,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -2854,8 +2728,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-survey-register-release
           - name: eq-ecs-deploy-release
@@ -2908,8 +2780,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -2960,8 +2830,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-schema-validator-release
           - name: eq-ecs-deploy-release
@@ -3010,8 +2878,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -3063,8 +2929,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-survey-runner-release
           - name: eq-ecs-deploy-release
@@ -3115,8 +2979,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: go-launch-a-survey-release
           - name: eq-ecs-deploy-release
@@ -3195,8 +3057,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-release
         run:
@@ -3230,8 +3090,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-release
         run:
@@ -3273,8 +3131,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-ecs-release
         run:
@@ -3306,8 +3162,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
         - name: eq-terraform-release
         run:
@@ -3338,8 +3192,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-terraform-dynamodb-release
         run:
@@ -3370,8 +3222,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-dynamodb-release
         run:
@@ -3409,8 +3259,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-documentdb-release
         run:
@@ -3443,8 +3291,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-terraform-redis-release
         run:
@@ -3496,8 +3342,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -3550,8 +3394,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-survey-register-release
           - name: eq-ecs-deploy-release
@@ -3604,8 +3446,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -3656,8 +3496,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-schema-validator-release
           - name: eq-ecs-deploy-release
@@ -3706,8 +3544,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-author-app-release
           - name: eq-ecs-deploy-release
@@ -3759,8 +3595,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: eq-survey-runner-release
           - name: eq-ecs-deploy-release
@@ -3811,8 +3645,6 @@ jobs:
           type: docker-image
           source:
             repository: onsdigital/eq-terraform-build
-            username: ((dockerhub_username))
-            password: ((dockerhub_password))
         inputs:
           - name: go-launch-a-survey-release
           - name: eq-ecs-deploy-release
