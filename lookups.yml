@@ -1,0 +1,103 @@
+resources:
+- name: eq-ecs-deploy
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-ecs-deploy.git
+    branch: master
+
+- name: eq-address-lookup-api
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-address-lookup-api.git
+    branch: master
+
+- name: eq-lookup-api
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-lookup-api.git
+    branch: master
+
+- name: eq-address-lookup-api-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-address-lookup-api
+
+- name: eq-lookup-api-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-lookup-api
+
+jobs:
+- name: build-eq-address-lookup-api
+  public: true
+  plan:
+  - get: eq-address-lookup-api
+    trigger: true
+  - put: eq-address-lookup-api-image
+    params:
+      build: eq-address-lookup-api
+      tag: eq-address-lookup-api/.git/HEAD
+    get_params:
+      skip_download: true
+
+- name: build-eq-lookup-api
+  public: true
+  plan:
+  - get: eq-lookup-api
+    trigger: true
+  - put: eq-lookup-api-image
+    params:
+      build: eq-lookup-api
+      tag: eq-lookup-api/.git/HEAD
+    get_params:
+      skip_download: true
+
+- name: pre-prod-deploy
+  public: true
+  max_in_flight: 1
+  serial_groups: [pre-prod-deploy, pre-prod-smoke-tests]
+  plan:
+  - get: eq-address-lookup-api
+    passed: [build-eq-address-lookup-api]
+    trigger: true
+  - get: eq-ecs-deploy
+  - task: Deploy Address Lookup API
+    params:
+      TF_VAR_env: 'preprod'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'preprod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_external_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_external_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'address-lookup-api'
+      TF_VAR_container_name: 'eq-address-lookup-api'
+      TF_VAR_container_port: 6030
+      TF_VAR_listener_rule_priority: 105
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-terraform-build
+      inputs:
+      - name: eq-address-lookup-api
+      - name: eq-ecs-deploy
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy
+          tfenv install
+
+          address_lookup_api_tag=$(cat ../eq-address-lookup-api/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-address-lookup-api"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+          terraform apply \
+          -var container_tag=$address_lookup_api_tag \
+          -var 'container_environment_variables="{ \"name\": \"LOOKUP_URL\", \"value\": \"((preprod_address_lookup_url))\" },{ \"name\": \"AUTH_KEY\", \"value\": \"((preprod_address_lookup_auth_token))\" }"'
+

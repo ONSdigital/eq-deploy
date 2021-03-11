@@ -1,0 +1,653 @@
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: ((docker_registry))/slack-notification-resource
+    tag: latest
+
+- name: registry-image
+  type: docker-image
+  source:
+    repository: concourse/registry-image-resource
+    tag: latest
+
+resources:
+- name: eq-terraform
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-terraform.git
+    branch: master
+
+- name: eq-author-terraform
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-author-terraform.git
+    branch: master
+
+- name: eq-terraform-ecs
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-terraform-ecs.git
+    branch: master
+
+- name: eq-ecs-deploy
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-ecs-deploy.git
+    branch: master
+
+- name: go-launch-a-survey
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/go-launch-a-survey.git
+    branch: master
+
+- name: eq-survey-register
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-survey-register.git
+    branch: master
+
+- name: eq-schema-validator
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-schema-validator.git
+    branch: master
+
+- name: eq-smoke-tests
+  type: git
+  source:
+    uri: https://github.com/ONSdigital/eq-smoke-tests.git
+    branch: master
+
+- name: eq-survey-runner-image
+  type: registry-image
+  source:
+    repository: onsdigital/eq-survey-runner
+    variant: staging
+
+- name: eq-author-image
+  type: registry-image
+  source:
+    repository: onsdigital/eq-author
+    variant: staging
+
+- name: go-launch-a-survey-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/go-launch-a-survey
+
+- name: eq-survey-register-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-survey-register
+
+- name: eq-schema-validator-image
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-schema-validator
+
+- name: slack-alert
+  type: slack-notification
+  source:
+    url: {{slack_webhook_url}}
+
+- name: evening-trigger
+  type: time
+  source:
+    start: 10:00 PM
+    stop: 11:00 PM
+    location: Europe/London
+
+- name: morning-trigger
+  type: time
+  source:
+    start: 06:00 AM
+    stop: 07:00 AM
+    location: Europe/London
+
+jobs:
+- name: build-go-launch-a-survey
+  public: true
+  plan:
+  - get: go-launch-a-survey
+    trigger: true
+  - put: go-launch-a-survey-image
+    params:
+      build: go-launch-a-survey
+      tag: go-launch-a-survey/.git/HEAD
+    get_params:
+      skip_download: true
+
+- name: build-eq-survey-register
+  public: true
+  plan:
+  - get: eq-survey-register
+    trigger: true
+  - task: build survey register
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: node
+          tag: latest
+      inputs:
+      - name: eq-survey-register
+      outputs:
+      - name: built-eq-survey-register
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          pushd eq-survey-register
+          export EQ_AUTHOR_VERSION=$(cat .git/HEAD | xargs echo -n)
+          yarn install --frozen-lockfile
+          popd
+          cp -R eq-survey-register/* built-eq-survey-register
+
+
+  - put: eq-survey-register-image
+    params:
+      build: built-eq-survey-register
+      tag: eq-survey-register/.git/HEAD
+    get_params:
+      skip_download: true
+
+- name: build-eq-schema-validator
+  public: true
+  plan:
+  - get: eq-schema-validator
+    trigger: true
+  - task: Run Tests
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: onsdigital/eq-python-build
+      inputs:
+      - name: eq-schema-validator
+      outputs:
+      - name: compiled-eq-schema-validator
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-schema-validator
+          ./scripts/build.sh
+
+          cp -R ../eq-schema-validator/* ../compiled-eq-schema-validator
+          cp ../eq-schema-validator/.git/HEAD ../compiled-eq-schema-validator/.application-version
+  - put: eq-schema-validator-image
+    params:
+      build: compiled-eq-schema-validator
+      tag: eq-schema-validator/.git/HEAD
+    get_params:
+      skip_download: true
+
+- name: staging-deploy
+  public: true
+  serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
+  plan:
+  - get: morning-trigger
+    trigger: true
+  - get: eq-survey-runner-image
+    params: 
+      skip_download: true
+    trigger: true
+  - get: go-launch-a-survey
+    passed: [build-go-launch-a-survey]
+    trigger: true
+  - get: eq-survey-register
+    passed: [build-eq-survey-register]
+    trigger: true
+  - get: eq-schema-validator
+    passed: [build-eq-schema-validator]
+    trigger: true
+  - get: eq-terraform
+    trigger: true
+  - get: eq-author-terraform
+    trigger: true
+  - get: eq-terraform-ecs
+    trigger: true
+  - get: eq-ecs-deploy
+    trigger: true
+  - get: eq-author-image
+    params: 
+      skip_download: true
+    trigger: true
+  - task: Deploy Terraform
+    params:
+      ANSIBLE_HOST_KEY_CHECKING: False
+      TF_VAR_env: 'staging'
+      TF_VAR_aws_account_id: '((dev_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
+      TF_VAR_aws_key_pair: staging
+      TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
+      TF_VAR_certificate_arn: {{staging_certificate_arn}}
+      TF_VAR_slack_webhook_path: {{slack_webhook_path}}
+      TF_VAR_survey_runner_docker_registry: {{dockerhub_registry}}
+      TF_VAR_survey_launcher_registry: {{docker_registry}}
+      TF_VAR_schema_validator_registry: {{docker_registry}}
+      TF_VAR_auto_deploy_updated_tags: false
+      TF_VAR_ecs_cluster_min_size: 3
+      TF_VAR_survey_runner_min_tasks: 3
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: eq-terraform
+      - name: eq-survey-runner-image
+      - name: go-launch-a-survey
+      - name: eq-schema-validator
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Deploy Staging"
+          cd eq-terraform
+          tfenv install
+
+          echo -e {{pem}} > staging.pem
+          chmod 400 staging.pem
+          ansible-galaxy install -f -r survey-runner-queue/ansible-requirements.yml
+
+          survey_runner_tag=$(cat ../eq-survey-runner-image/tag | xargs echo -n)
+          go_launch_a_survey_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
+          eq_schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
+          eq_lookup_api_tag=$(cat ../eq-lookup-api/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
+          echo "eu-west-1" | terraform apply \
+            -var survey_runner_tag=$survey_runner_tag \
+            -var survey_launcher_tag=$go_launch_a_survey_tag \
+            -var survey_launcher_tag=$go_launch_a_survey_tag \
+            -var schema_validator_tag=$eq_schema_validator_tag \
+            -var google_tag_manager_id="((runner_google_tag_manager_id))" \
+            -var google_tag_manager_environment_id="((staging_runner_google_tag_manager_environment_id))"
+  - task: Deploy Author Terraform
+    params:
+      TF_VAR_env: 'staging'
+      TF_VAR_aws_account_id: '((dev_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
+      TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
+      TF_VAR_certificate_arn: {{staging_certificate_arn}}
+      TF_VAR_slack_webhook_path: {{slack_webhook_path}}
+      TF_VAR_survey_runner_docker_registry: {{dockerhub_registry}}
+      TF_VAR_schema_validator_registry: {{docker_registry}}
+      TF_VAR_survey_register_registry: {{docker_registry}}
+      TF_VAR_author_registry: {{dockerhub_registry}}
+      TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
+      TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+      TF_VAR_author_database: {{staging_author_database}}
+      TF_VAR_author_mongo_username: {{staging_author_mongo_username}}
+      TF_VAR_author_mongo_password: {{staging_author_mongo_password}}
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: eq-author-terraform
+      - name: eq-survey-runner-image
+      - name: go-launch-a-survey
+      - name: eq-schema-validator
+      - name: eq-survey-register
+      - name: eq-author-image
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Deploy Staging Author"
+          cd eq-author-terraform
+          tfenv install
+
+          survey_runner_tag=$(cat ../eq-survey-runner-image/tag | xargs echo -n)
+          eq_author_tag=$(cat ../eq-author-image/tag | xargs echo -n)
+          eq_survey_register_tag=$(cat ../eq-survey-register/.git/HEAD | xargs echo -n)
+          go_launch_a_survey_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
+          eq_schema_validator_tag=$(cat ../eq-schema-validator/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
+          echo "eu-west-1" | terraform apply \
+            -var survey_runner_tag=$survey_runner_tag \
+            -var author_tag=$eq_author_tag \
+            -var register_tag=$eq_survey_register_tag \
+            -var survey_launcher_tag=$go_launch_a_survey_tag \
+            -var schema_validator_tag=$eq_schema_validator_tag \
+            -var author_gtm_id="((author_google_tag_manager_id))" \
+            -var author_gtm_auth="((staging_author_google_tag_manager_auth))" \
+            -var author_gtm_preview="((staging_author_google_tag_manager_preview))" \
+            -var author_sentry_dsn="((author_sentry_dsn))" \
+            -var author_api_enable_import="true" \
+            -var author_secrets_bucket_name="((staging_author_secrets_bucket_name))" \
+            -var author_firebase_service_account_key="((author_firebase_service_account_key))"
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-runner #eq-author'
+        attachments:
+          - pretext: Staging Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+  - task: Wait for Deployed Survey Runner
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: eq-survey-runner-image
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          survey_runner_tag=$(cat eq-survey-runner/.git/HEAD | xargs echo -n)
+          while [[ "$(curl -s https://staging-surveys.dev.eq.ons.digital/status)" != *"$survey_runner_tag"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-runner'
+        attachments:
+          - pretext: Staging Survey Runner Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+  - task: Wait for Deployed Author API
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: eq-author-image
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          author_api_tag=$(cat eq-author-image/tag | xargs echo -n)
+          while [[ "$(curl -s https://staging-author.dev.eq.ons.digital/status)" != *"$author_api_tag"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-author'
+        attachments:
+          - pretext: Staging Author API Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+  - task: Wait for Deployed Author
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: eq-author-image
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          author_tag=$(cat eq-author-image/tag | xargs echo -n)
+          while [[ "$(curl -s https://staging-author.dev.eq.ons.digital/status.json)" != *"$author_tag"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-author'
+        attachments:
+          - pretext: Staging Author Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+  - task: Wait for Deployed Publisher
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: eq-author-image
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          publisher_tag=$(cat eq-author-image/tag | xargs echo -n)
+          while [[ "$(curl -s https://staging-publisher.dev.eq.ons.digital/status)" != *"$publisher_tag"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-author'
+        attachments:
+          - pretext: Staging Publisher Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+  - task: Wait for Deployed Survey register
+    timeout: 10m
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: eq-survey-register
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          survey_register_tag=$(cat eq-survey-register/.git/HEAD | xargs echo -n)
+          while [[ "$(curl -s https://staging-author-survey-register.dev.eq.ons.digital/status)" != *"OK"* ]]; do sleep 5; done
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-author'
+        attachments:
+          - pretext: Staging Survey register Deploy Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+
+- name: smoke-tests
+  public: true
+  serial_groups: [staging-smoke-tests]
+  plan:
+  - aggregate:
+    - get: eq-smoke-tests
+      trigger: true
+    - get: eq-survey-runner-image
+      passed: [staging-deploy]
+      trigger: true
+    - get: eq-author-image
+      passed: [staging-deploy]
+      trigger: true
+    - get: go-launch-a-survey
+      passed: [staging-deploy]
+      trigger: true
+  - task: Test
+    params:
+      BASE_URL: https://staging-author.dev.eq.ons.digital
+      CYPRESS_RECORD_KEY: ((staging_cypress_record_key))
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/cypress-base
+          tag: 14
+      inputs:
+      - name: eq-smoke-tests
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          cd eq-smoke-tests
+          yarn install
+          yarn test_headless
+    on_failure:
+      put: slack-alert
+      params:
+        channel: '#eq-runner #eq-author'
+        attachments:
+          - pretext: Staging smoke-tests Failed
+            color: danger
+            title: Concourse Build $BUILD_ID
+            title_link: http://concourse.dev.eq.ons.digital/builds/$BUILD_ID
+
+- name: staging-destroy
+  public: true
+  serial_groups: [staging-deploy, staging-smoke-tests, staging-destroy]
+  plan:
+  - get: evening-trigger
+    trigger: true
+  - get: eq-terraform
+    passed: [staging-deploy]
+  - get: eq-author-terraform
+    passed: [staging-deploy]
+  - task: Destroy Terraform
+    params:
+      TF_VAR_env: 'staging'
+      TF_VAR_aws_account_id: '((dev_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
+      TF_VAR_aws_key_pair: staging
+      TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
+      TF_VAR_certificate_arn: {{staging_certificate_arn}}
+      TF_VAR_slack_webhook_path: {{slack_webhook_path}}
+      TF_VAR_survey_runner_docker_registry: {{docker_registry}}
+      TF_VAR_survey_launcher_registry: {{docker_registry}}
+      TF_VAR_schema_validator_registry: {{docker_registry}}
+      TF_VAR_author_registry: {{docker_registry}}
+      TF_VAR_auto_deploy_updated_tags: false
+      TF_VAR_ecs_cluster_min_size: 3
+      TF_VAR_survey_runner_min_tasks: 3
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: eq-terraform
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          echo "Destroy Staging"
+          cd eq-terraform
+          tfenv install
+
+          echo -e "" > staging.pem
+
+          terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
+          echo "eu-west-1" | terraform destroy -force
+  - task: Destroy Author Terraform
+    params:
+      TF_VAR_env: 'staging'
+      TF_VAR_aws_account_id: '((dev_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((dev_aws_assume_role_arn))'
+      TF_VAR_ons_access_ips: {{staging_ons_access_ips}}
+      TF_VAR_certificate_arn: {{staging_certificate_arn}}
+      TF_VAR_slack_webhook_path: {{slack_webhook_path}}
+      TF_VAR_survey_runner_docker_registry: {{docker_registry}}
+      TF_VAR_schema_validator_registry: {{docker_registry}}
+      TF_VAR_author_registry: {{docker_registry}}
+      TF_VAR_author_firebase_project_id: {{staging_author_firebase_project_id}}
+      TF_VAR_author_firebase_api_key: {{staging_author_firebase_api_key}}
+      TF_VAR_author_database: {{staging_author_database}}
+      TF_VAR_author_mongo_username: {{staging_author_mongo_username}}
+      TF_VAR_author_mongo_password: {{staging_author_mongo_password}}
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+        - name: eq-author-terraform
+      run:
+        path: bash
+        args:
+          - -exc
+          - |
+            echo "Deploy Staging Author"
+            cd eq-author-terraform
+            tfenv install
+
+            terraform init -backend-config="key="staging"" -backend-config="role_arn="((dev_aws_assume_role_arn))""
+            echo "eu-west-1" | terraform destroy -force
+
+- name: pre-prod-deploy
+  public: true
+  max_in_flight: 1
+  serial_groups: [pre-prod-deploy, pre-prod-smoke-tests]
+  plan:
+  - get: go-launch-a-survey
+    passed: [smoke-tests]
+    trigger: true
+  - get: eq-ecs-deploy
+  - task: Deploy Survey Launcher
+    params:
+      TF_VAR_env: 'preprod'
+      TF_VAR_aws_account_id: '((preprod_aws_account_id))'
+      TF_VAR_aws_assume_role_arn: '((preprod_aws_assume_role_arn))'
+      TF_VAR_vpc_id: '((preprod_vpc_id))'
+      TF_VAR_ecs_cluster_name: 'preprod-eq'
+      TF_VAR_docker_registry: {{docker_registry}}
+      TF_VAR_aws_alb_arn: {{preprod_external_aws_alb_arn}}
+      TF_VAR_aws_alb_listener_arn: {{preprod_external_aws_alb_listener_arn}}
+      TF_VAR_service_name: 'surveys-launch'
+      TF_VAR_container_name: 'go-launch-a-survey'
+      TF_VAR_container_port: 8000
+      TF_VAR_listener_rule_priority: 101
+      TF_VAR_healthcheck_path: '/status'
+      TF_VAR_task_has_iam_policy: true
+      TF_VAR_slack_alert_sns_arn: '((preprod_slack_alert_sns_arn))'
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ((docker_registry))/eq-terraform-build
+      inputs:
+      - name: go-launch-a-survey
+      - name: eq-ecs-deploy
+      run:
+        path: bash
+        args:
+        - -exc
+        - |
+          cd eq-ecs-deploy
+          tfenv install
+
+          survey_launcher_tag=$(cat ../go-launch-a-survey/.git/HEAD | xargs echo -n)
+
+          terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-launcher"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
+          terraform apply \
+          -var container_tag=$survey_launcher_tag \
+          -var 'container_environment_variables="{\"name\": \"JWT_ENCRYPTION_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-encryption-sr-public-key.pem\"},{\"name\": \"JWT_SIGNING_KEY_PATH\",\"value\": \"/secrets/sdc-user-authentication-signing-launcher-private-key.pem\"},{\"name\": \"SECRETS_S3_BUCKET\",\"value\": \"preprod-secrets\"},{\"name\": \"SURVEY_RUNNER_URL\",\"value\": \"https://eq.onsdigital.uk\"},{\"name\": \"SCHEMA_VALIDATOR_URL\",\"value\": \"https://preprod-schema-validator.eq.ons.digital\"},{ \"name\": \"SURVEY_REGISTER_URL\", \"value\": \"https://preprod-author-survey-register.prod.eq.ons.digital\"}"' \
+          -var 'task_iam_policy_json="{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"\",\"Effect\":\"Allow\",\"Action\":[\"s3:ListObjects\",\"s3:ListBucket\",\"s3:GetObject\"],\"Resource\":\"arn:aws:s3:::preprod-secrets*\"}]}"'
