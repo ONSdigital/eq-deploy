@@ -35,6 +35,18 @@ resources:
     repository: ((docker_registry))/cypress-base
     tag: 14
 
+- name: registry-image-resource-source
+  type: docker-image
+  source:
+    repository: concourse/registry-image-resource
+    tag: latest
+
+- name: registry-image-resource-target
+  type: docker-image
+  source:
+    repository: ((docker_registry))/registry-image-resource
+    tag: latest
+
 jobs:
 - name: copy-slack-notification-resourse
   public: true
@@ -68,3 +80,14 @@ jobs:
   - put: cypress-base-target
     params:
       load: "./cypress-base-source"
+
+- name: copy-registry-image-resource
+  public: true
+  plan:
+  - get: registry-image-resource-source
+    params:
+      save: true
+    trigger: true
+  - put: registry-image-resource-target
+    params:
+      load: "./registry-image-resource-source"
