@@ -47,6 +47,18 @@ resources:
     repository: ((docker_registry))/registry-image-resource
     tag: latest
 
+- name: github-release-resource-source
+  type: docker-image
+  source:
+    repository: concourse/github-release-resource
+    tag: 1.1.0
+
+- name: github-release-resource-target
+  type: docker-image
+  source:
+    repository: ((docker_registry))/github-release-resource
+    tag: 1.1.0
+
 jobs:
 - name: copy-slack-notification-resourse
   public: true
@@ -91,3 +103,14 @@ jobs:
   - put: registry-image-resource-target
     params:
       load: "./registry-image-resource-source"
+  
+- name: copy-github-release-resource
+  public: true
+  plan:
+  - get: github-release-resource-source
+    params:
+      save: true
+    trigger: true
+  - put: github-release-resource-target
+    params:
+      load: "./github-release-resource-source"
