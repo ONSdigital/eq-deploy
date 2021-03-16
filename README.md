@@ -27,7 +27,7 @@ To apply the `eq.yml` pipleine you will need to create a valid secrets file (`se
 
 Once logged in you are able to add/update the build plans with the commands below.
 
-`fly -t eq set-pipeline -p eq -c eq.yml  --load-vars-from secrets.yml`
+`fly -t eq set-pipeline -p eq-staging -c staging.yml  --load-vars-from secrets.yml`
 
 `fly -t eq set-pipeline -p eq-deploy -c deploy.yml  --load-vars-from secrets.yml`
 
