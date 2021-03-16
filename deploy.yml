@@ -2336,10 +2336,10 @@ jobs:
       passed: [PreProd-Author-Deploy]
       trigger: true
     - get: eq-survey-register-release
-      passed: [build-eq-survey-register]
+      passed: [PreProd-Author-Deploy]
       trigger: true
     - get: go-launch-a-survey-release
-      passed: [build-go-launch-a-survey]
+      passed: [PreProd-Author-Deploy]
       trigger: true
     - get: eq-terraform-release
       passed: [PreProd-Author-Deploy]

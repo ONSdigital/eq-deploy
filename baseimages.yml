@@ -1,0 +1,93 @@
+resources:
+- name: slack-notification-source
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+- name: slack-notification-target
+  type: docker-image
+  source:
+    repository: ((docker_registry))/slack-notification-resource
+    tag: latest
+
+- name: eq-terraform-build-source
+  type: docker-image
+  source:
+    repository: onsdigital/eq-terraform-build
+    tag: latest
+
+- name: eq-terraform-build-target
+  type: docker-image
+  source:
+    repository: ((docker_registry))/eq-terraform-build
+    tag: latest
+
+- name: cypress-base-source
+  type: docker-image
+  source:
+    repository: cypress/base
+    tag: 14
+
+- name: cypress-base-target
+  type: docker-image
+  source:
+    repository: ((docker_registry))/cypress-base
+    tag: 14
+
+- name: registry-image-resource-source
+  type: docker-image
+  source:
+    repository: concourse/registry-image-resource
+    tag: latest
+
+- name: registry-image-resource-target
+  type: docker-image
+  source:
+    repository: ((docker_registry))/registry-image-resource
+    tag: latest
+
+jobs:
+- name: copy-slack-notification-resourse
+  public: true
+  plan:
+  - get: slack-notification-source
+    params:
+      save: true
+    trigger: true
+  - put: slack-notification-target
+    params:
+      load: "./slack-notification-source"
+
+- name: copy-eq-terraform-build
+  public: true
+  plan:
+  - get: eq-terraform-build-source
+    params:
+      save: true
+    trigger: true
+  - put: eq-terraform-build-target
+    params:
+      load: "./eq-terraform-build-source"
+
+- name: copy-cypess-base
+  public: true
+  plan:
+  - get: cypress-base-source
+    params:
+      save: true
+    trigger: true
+  - put: cypress-base-target
+    params:
+      load: "./cypress-base-source"
+
+- name: copy-registry-image-resource
+  public: true
+  plan:
+  - get: registry-image-resource-source
+    params:
+      save: true
+    trigger: true
+  - put: registry-image-resource-target
+    params:
+      load: "./registry-image-resource-source"
