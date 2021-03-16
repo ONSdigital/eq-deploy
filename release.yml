@@ -473,9 +473,13 @@ jobs:
         - -exc
         - |
           cd eq-ecs-deploy-release
+          mkdir eq-ecs-deploy
+          tar -xzf source.tar.gz -C eq-ecs-deploy --strip-components=1
+
+          cd eq-ecs-deploy
           tfenv install
 
-          survey_launcher_tag=$(cat ../go-launch-a-survey-image/tag | xargs echo -n)
+          survey_launcher_tag=$(cat ../../go-launch-a-survey-image/tag | xargs echo -n)
 
           terraform init -backend-config="bucket="concourse-preprod-terraform-state"" -backend-config="key="preprod-ecs-launcher"" -backend-config="role_arn="((preprod_aws_assume_role_arn))""
           terraform apply \
