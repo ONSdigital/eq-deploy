@@ -29,6 +29,6 @@ Once logged in you are able to add/update the build plans with the commands belo
 
 `fly -t eq set-pipeline -p eq-staging -c staging.yml  --load-vars-from secrets.yml`
 
-`fly -t eq set-pipeline -p eq-deploy -c deploy.yml  --load-vars-from secrets.yml`
+`fly -t eq set-pipeline -p eq-release -c release.yml  --load-vars-from secrets.yml`
 
 When updating a build plan, a diff is shown for you to confirm the changes you are making.
