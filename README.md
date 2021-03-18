@@ -13,7 +13,7 @@ This repo holds the Concourse build and deployment pipeline for the EQ products
 
 2. Sync your Fly version with Concourse, which is currently version 3.3.3:
 
-`➜ fly sync -c CONCOURSE_URL`
+`➜ fly -t eq sync`
 
 3. Login to Concourse:
 
