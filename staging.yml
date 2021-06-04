@@ -142,6 +142,9 @@ jobs:
       TF_VAR_auto_deploy_updated_tags: false
       TF_VAR_ecs_cluster_min_size: 3
       TF_VAR_survey_runner_min_tasks: 3
+      TF_VAR_survey_runner_s3_secrets_bucket: {{staging_survey_runner_s3_secrets_bucket}}
+      TF_VAR_survey_runner_secrets_file_name: {{staging_survey_runner_secrets_file_name}}
+      TF_VAR_survey_runner_keys_file_name: {{staging_survey_runner_keys_file_name}}
     config:
       platform: linux
       image_resource:
