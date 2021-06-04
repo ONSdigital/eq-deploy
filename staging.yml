@@ -145,6 +145,11 @@ jobs:
       TF_VAR_survey_runner_s3_secrets_bucket: {{staging_survey_runner_s3_secrets_bucket}}
       TF_VAR_survey_runner_secrets_file_name: {{staging_survey_runner_secrets_file_name}}
       TF_VAR_survey_runner_keys_file_name: {{staging_survey_runner_keys_file_name}}
+      TF_VAR_pubsub_enabled: {{staging_pubsub_enabled}}
+      TF_VAR_publisher_backend: {{staging_publisher_backend}}
+      TF_VAR_pubsub_project_id: {{staging_pubsub_project_id}}
+      TF_VAR_pubsub_topic_id: {{staging_pubsub_topic_id}}
+      TF_VAR_pubsub_credentials_file: {{staging_pubsub_credentials_file}}
     config:
       platform: linux
       image_resource:
